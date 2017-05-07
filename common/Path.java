@@ -21,7 +21,7 @@ import java.util.*;
  */
 public class Path implements Iterable<String>, Serializable
 {
-    
+    private static final long serialVersionUID = 42L;
     private List<String> pathComponents;
     
     /** Creates a new path which represents the root directory. */

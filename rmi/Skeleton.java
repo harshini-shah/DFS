@@ -26,6 +26,12 @@ import java.net.*;
 */
 public class Skeleton<T>
 {
+    private InetSocketAddress socketAddress;
+    
+    public InetSocketAddress getSocketAddress() {
+        return socketAddress;
+    }
+    
     /** Creates a <code>Skeleton</code> with no initial server address. The
         address will be determined by the system when <code>start</code> is
         called. Equivalent to using <code>Skeleton(null)</code>.

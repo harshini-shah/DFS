@@ -1,5 +1,6 @@
 package rmi;
 
+import java.lang.reflect.*;
 import java.net.*;
 
 /** RMI stub factory.
@@ -48,7 +49,24 @@ public abstract class Stub
     public static <T> T create(Class<T> c, Skeleton<T> skeleton)
         throws UnknownHostException
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (c == null) {
+            throw new NullPointerException("Class object passed is null");
+        } else if (skeleton == null) {
+            throw new NullPointerException("Skeleton object passed is null");
+        } else if (!checkInterface(c)) {
+            throw new Error("Object passed is not a remote interface");
+        }
+        
+        InetSocketAddress inetSocketAddress = skeleton.getSocketAddress();
+        if (inetSocketAddress == null) {
+            throw new IllegalStateException();
+        }
+        if (inetSocketAddress.getAddress().isAnyLocalAddress()) {
+            // This method would throw UnknownHostException
+            InetAddress.getLocalHost();
+        }
+        
+        return Stub.create(c, inetSocketAddress);
     }
 
     /** Creates a stub, given a skeleton with an assigned address and a hostname
@@ -84,7 +102,22 @@ public abstract class Stub
     public static <T> T create(Class<T> c, Skeleton<T> skeleton,
                                String hostname)
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (c == null) {
+            throw new NullPointerException("c is null");
+        } else if (skeleton == null) {
+            throw new NullPointerException("skeleton is null");
+        } else if (hostname == null) {
+            throw new NullPointerException("hostname is null");
+        } else if (!checkInterface(c)) {
+            throw new Error("Object passed is not a remote interface");
+        }
+        
+        InetSocketAddress inetSocketAddress = skeleton.getSocketAddress();
+        if (inetSocketAddress == null) {
+            throw new IllegalStateException();
+        }
+        InetSocketAddress socketAddress = new InetSocketAddress(hostname, inetSocketAddress.getPort());
+        return Stub.create(c, socketAddress);
     }
 
     /** Creates a stub, given the address of a remote server.
@@ -104,8 +137,49 @@ public abstract class Stub
                       <code>RMIException</code>, or if an object implementing
                       this interface cannot be dynamically created.
      */
+    @ SuppressWarnings("unchecked")
     public static <T> T create(Class<T> c, InetSocketAddress address)
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (c == null) {
+            throw new NullPointerException("c is null");
+        } else if (address == null) {
+            throw new NullPointerException("address is null");
+        } else if (!checkInterface(c)) {
+            throw new Error("Object passed is not a remote interface");
+        }
+        
+        InvocationHandler handler = new StubProxyHandler(c, address);
+        return (T) java.lang.reflect.Proxy.newProxyInstance(c.getClassLoader(), new Class<?>[] {c}, handler);
+    }
+    
+    /*
+     * Checks if the object passed in an interface. If it is, then checks
+     * if it is a remote interface by checking every method.
+     * 
+     * @param c a Class object representing the interface implemented by the 
+     *          remote object
+     * 
+     * @return boolean denoting if the conditions are satisfied
+     */
+    private static <T> boolean checkInterface(Class<T> c) {
+        if (!c.isInterface()) {
+            return false;
+        }
+        
+        for (Method method : c.getMethods()) {
+            boolean throwsRMIExp = false;
+            for (Class<?> exception : method.getExceptionTypes()) {
+                if (exception.equals(RMIException.class)) {
+                    throwsRMIExp = true;
+                    break;
+                }
+            }
+            
+            if (!throwsRMIExp) {
+                return false;
+            }
+        }
+        
+        return true;
     }
 }
