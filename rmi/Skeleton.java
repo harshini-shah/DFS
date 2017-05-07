@@ -1,5 +1,6 @@
 package rmi;
 
+import java.io.IOException;
 import java.net.*;
 
 /** RMI skeleton
@@ -27,6 +28,10 @@ import java.net.*;
 public class Skeleton<T>
 {
     private InetSocketAddress socketAddress;
+    private final Class<T> serverClass;
+    private final T serverObject;
+    protected ServerSocket serverSocket;
+    protected RMIListener<T> listener;
     
     public InetSocketAddress getSocketAddress() {
         return socketAddress;
@@ -53,7 +58,7 @@ public class Skeleton<T>
      */
     public Skeleton(Class<T> c, T server)
     {
-        throw new UnsupportedOperationException("not implemented");
+        this(c, server, null);
     }
 
     /** Creates a <code>Skeleton</code> with the given initial server address.
@@ -76,7 +81,17 @@ public class Skeleton<T>
      */
     public Skeleton(Class<T> c, T server, InetSocketAddress address)
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (c == null) {
+            throw new NullPointerException("c is null");
+        } else if (server == null) {
+            throw new NullPointerException("server is null");
+        } else if (Stub.checkInterface(c)) {
+            throw new Error("c is not a remote interface");
+        }
+        
+        this.serverClass = c;
+        this.serverObject = server;
+        this.socketAddress = address;
     }
 
     /** Called when the listening thread exits.
@@ -99,6 +114,10 @@ public class Skeleton<T>
      */
     protected void stopped(Throwable cause)
     {
+        System.out.println("Stopped:");
+        if (cause != null) { 
+            cause.printStackTrace(); 
+        }
     }
 
     /** Called when an exception occurs at the top level in the listening
@@ -118,6 +137,8 @@ public class Skeleton<T>
      */
     protected boolean listen_error(Exception exception)
     {
+        System.out.println("listen_error: ");
+        exception.printStackTrace();
         return false;
     }
 
@@ -130,6 +151,8 @@ public class Skeleton<T>
      */
     protected void service_error(RMIException exception)
     {
+        System.out.println("server error: ");
+        exception.printStackTrace();
     }
 
     /** Starts the skeleton server.
@@ -147,7 +170,27 @@ public class Skeleton<T>
      */
     public synchronized void start() throws RMIException
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (serverSocket != null) {
+            throw new RMIException("Skeleton has already been started");
+        }
+        
+        // Bind the socket
+        try {
+            serverSocket = new ServerSocket();
+            if (socketAddress == null){
+                serverSocket = new ServerSocket(0);
+                socketAddress = new InetSocketAddress(serverSocket.getLocalPort());
+            } else {
+                serverSocket = new ServerSocket();
+                serverSocket.bind(socketAddress);
+            }
+        } catch (IOException e) {
+            serverSocket = null;
+            throw new RMIException("Server Socket binding failed ", e);
+        }
+        
+        listener = new RMIListener<T>(this, serverClass, serverObject, serverSocket);
+        listener.start();
     }
 
     /** Stops the skeleton server, if it is already running.
@@ -161,6 +204,12 @@ public class Skeleton<T>
      */
     public synchronized void stop()
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (listener != null) {
+            try {
+                serverSocket.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

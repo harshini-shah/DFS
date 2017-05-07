@@ -161,7 +161,7 @@ public abstract class Stub
      * 
      * @return boolean denoting if the conditions are satisfied
      */
-    private static <T> boolean checkInterface(Class<T> c) {
+    protected static <T> boolean checkInterface(Class<T> c) {
         if (!c.isInterface()) {
             return false;
         }
