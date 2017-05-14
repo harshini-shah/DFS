@@ -67,8 +67,8 @@ public class Path implements Iterable<String>, Serializable
      */
     public Path(String path)
     {
-        if (path == null) {
-            throw new IllegalArgumentException("The path speicified is null");
+        if (path == null || path.isEmpty()) {
+            throw new IllegalArgumentException("The path speicified is null or emmpty");
         } else if (path.charAt(0) != '/') {
             throw new IllegalArgumentException("The path does not begin with a forward slash");
         } else if (path.contains(":")) {
@@ -78,7 +78,7 @@ public class Path implements Iterable<String>, Serializable
         String[] pathStrings = path.split("/");
         pathComponents = new ArrayList<String>();
         for (String currPathComponent : pathStrings) {
-            if (currPathComponent != null) {
+            if (currPathComponent != null && !currPathComponent.isEmpty()) {
                 pathComponents.add(currPathComponent);
             }
         }
@@ -123,6 +123,9 @@ public class Path implements Iterable<String>, Serializable
 
         @ Override
         public String next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
             String nextComponent = iteratorComponents.get(position);
             position++;
             return nextComponent;
@@ -234,8 +237,20 @@ public class Path implements Iterable<String>, Serializable
      */
     public boolean isSubpath(Path other)
     {
+        Iterator<String> otherIterator = other.iterator();
+        Iterator<String> thisIterator = this.iterator();
         
-        throw new UnsupportedOperationException("not implemented");
+        while (otherIterator.hasNext()) {
+            if (!thisIterator.hasNext()) {
+                return false;
+            }
+            
+            if (!otherIterator.next().equals(thisIterator.next())) {
+                return false;
+            }
+        }
+        
+        return true;
     }
 
     /** Converts the path to <code>File</code> object.

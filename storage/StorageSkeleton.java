@@ -3,7 +3,7 @@ package storage;
 import java.net.InetSocketAddress;
 import rmi.*;
 
-public class StorageSkeleton<T> extends Skeleton
+public class StorageSkeleton<T> extends Skeleton<T>
 {
 	private StorageServer storageServer;
 	public boolean stopped;

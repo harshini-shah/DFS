@@ -277,28 +277,28 @@ public class StorageServer implements Storage, Command
         return isDeleted;
     }
 
-    @Override
-    public synchronized boolean copy(Path file, Storage server)
-        throws RMIException, FileNotFoundException, IOException
-    {
-        if(server == null || file == null)
-        	throw new NullPointerException();
-        
-        File f = file.toFile(root);
-        //Deletion step?
-        long fileSize = server.size(file);
-        create(file);
-        byte[] byteStream;
-        
-        long offset = 0;
-        while(offset < fileSize)
-        {
-        	//read in int size chunks
-        	int length = (int) Math.min(Integer.MAX_VALUE, fileSize - offset);
-        	byteStream = server.read(file, offset, length);
-        	write(file, offset, byteStream);
-        	offset += length;
-        }
-        return true;
-    }
+//    @Override
+//    public synchronized boolean copy(Path file, Storage server)
+//        throws RMIException, FileNotFoundException, IOException
+//    {
+//        if(server == null || file == null)
+//        	throw new NullPointerException();
+//        
+//        File f = file.toFile(root);
+//        //Deletion step?
+//        long fileSize = server.size(file);
+//        create(file);
+//        byte[] byteStream;
+//        
+//        long offset = 0;
+//        while(offset < fileSize)
+//        {
+//        	//read in int size chunks
+//        	int length = (int) Math.min(Integer.MAX_VALUE, fileSize - offset);
+//        	byteStream = server.read(file, offset, length);
+//        	write(file, offset, byteStream);
+//        	offset += length;
+//        }
+//        return true;
+//    }
 }
