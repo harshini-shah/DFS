@@ -1,11 +1,14 @@
 package storage;
 
 import java.io.*;
+import java.util.Iterator;
 import java.net.*;
+import java.nio.channels.FileChannel;
 
 import common.*;
 import rmi.*;
 import naming.*;
+import common.*;
 
 /** Storage server.
 
@@ -16,15 +19,62 @@ import naming.*;
  */
 public class StorageServer implements Storage, Command
 {
+	private final File root; //root filesystem for this Storage server
+	private CommandSkeleton<Command> commandSkeleton;
+	private StorageSkeleton<Storage> storageSkeleton;
+	Throwable stoppedCause;
+	
+	public void setStoppedCause(Throwable stoppedCause)
+	{
+		this.stoppedCause = stoppedCause;
+	}
+
+	/** Creates a storage server, given a directory on the local filesystem, and
+        ports to use for the client and command interfaces.
+
+        <p>
+        The ports may have to be specified if the storage server is running
+        behind a firewall, and specific ports are open.
+
+        @param root Directory on the local filesystem. The contents of this
+                    directory will be accessible through the storage server.
+        @param client_port Port to use for the client interface, or zero if the
+                           system should decide the port.
+        @param command_port Port to use for the command interface, or zero if
+                            the system should decide the port.
+        @throws NullPointerException If <code>root</code> is <code>null</code>.
+    */
+    public StorageServer(File root, int client_port, int command_port)
+    {
+        if(root == null)
+        	throw new NullPointerException("Root was null");
+        this.root = root;
+        
+        if(client_port == 0)
+        	storageSkeleton = new StorageSkeleton(Storage.class, this);
+        else
+        	storageSkeleton = new StorageSkeleton(Storage.class, this, new InetSocketAddress(client_port));
+        
+        if(command_port == 0)
+        	commandSkeleton = new CommandSkeleton(Command.class, this);
+        else
+        	commandSkeleton = new CommandSkeleton(Command.class, this, new InetSocketAddress(command_port));
+    }
+
     /** Creates a storage server, given a directory on the local filesystem.
+
+        <p>
+        This constructor is equivalent to
+        <code>StorageServer(root, 0, 0)</code>. The system picks the ports on
+        which the interfaces are made available.
 
         @param root Directory on the local filesystem. The contents of this
                     directory will be accessible through the storage server.
         @throws NullPointerException If <code>root</code> is <code>null</code>.
-    */
+     */
     public StorageServer(File root)
     {
-        throw new UnsupportedOperationException("not implemented");
+        this(root, 0, 0);
     }
 
     /** Starts the storage server and registers it with the given naming
@@ -70,39 +120,185 @@ public class StorageServer implements Storage, Command
      */
     protected void stopped(Throwable cause)
     {
+    	System.out.println("Storage server stopped");
+        if (cause != null) 
+        { 
+            cause.printStackTrace(); 
+        }
     }
 
     // The following methods are documented in Storage.java.
     @Override
     public synchronized long size(Path file) throws FileNotFoundException
     {
-        throw new UnsupportedOperationException("not implemented");
+        File f = file.toFile(root);  //why root?
+        
+        if(!f.isFile())
+        	throw new FileNotFoundException("File does not exist or is not a normal file");
+        
+        return f.length();
     }
 
     @Override
     public synchronized byte[] read(Path file, long offset, int length)
         throws FileNotFoundException, IOException
     {
-        throw new UnsupportedOperationException("not implemented");
+    	File f = file.toFile(root);
+        
+        if(!f.isFile())
+        	throw new FileNotFoundException("File does not exist or is not a normal file");
+        if(offset+length > f.length() || offset < 0 || length < 0)
+        	throw new IndexOutOfBoundsException();
+        
+        FileInputStream fis = new FileInputStream(f);
+        byte[] byteStream = new byte[length];
+        fis.skip(offset);
+        fis.read(byteStream);
+        
+        if(fis != null)
+       		fis.close();
+                
+        return byteStream;
     }
 
     @Override
     public synchronized void write(Path file, long offset, byte[] data)
         throws FileNotFoundException, IOException
     {
-        throw new UnsupportedOperationException("not implemented");
+    	File f = file.toFile(root);
+        
+        if(!f.isFile())
+        	throw new FileNotFoundException("File does not exist or is not a normal file");
+        if( offset < 0 )
+        	throw new IndexOutOfBoundsException();
+        
+        //Appending to a file with an offset does not make sense
+        FileOutputStream fos = new FileOutputStream(f, false);
+        FileChannel ch = fos.getChannel();
+        ch.position(offset);
+        fos.write(data);
+        
+        if(fos != null)
+       		fos.close();
+        
     }
 
     // The following methods are documented in Command.java.
     @Override
     public synchronized boolean create(Path file)
     {
-        throw new UnsupportedOperationException("not implemented");
+        File f = file.toFile(root);
+        //Path can't be root itself
+        if(f.equals(root))
+        	return false;
+        
+        //Returns new PathIterator(impl. iterator) from Path.java
+        Iterator<String> iter = file.iterator();
+        File path = root;
+        
+        while(iter.hasNext())
+        {
+        	File subDirectory = new File(path, iter.next());
+        	if(iter.hasNext())
+        	{
+        		if(!subDirectory.exists())
+        		{
+        			if(subDirectory.mkdir())
+        				path = subDirectory;
+        			else
+        				return false;
+        		}
+        		else if(!subDirectory.isDirectory())
+        		{
+        			return false;
+        		}
+        		else
+        		{
+        			path = subDirectory;
+        		}
+        	}
+        	//Create the file which is the last component of the path
+        	else
+        	{
+        		try
+        		{
+        			return subDirectory.createNewFile();
+        		}catch(IOException ex)
+        		{
+        			ex.printStackTrace();
+        			return false;
+        		}
+        	}
+        }
+        //If all fails
+		throw new Error("Create() failed"); 
+    }
+    public boolean deleteRecursive(File file)
+    {
+    	for(File child: file.listFiles())
+    	{
+    		if(child.isFile())
+    		{
+    			if(!child.delete())
+    				return false;
+    		}
+    		else
+    		{
+    			if(!deleteRecursive(child))
+    				return false;
+    		}
+    	}
+    	return file.delete();
     }
 
     @Override
     public synchronized boolean delete(Path path)
     {
-        throw new UnsupportedOperationException("not implemented");
+        File f = path.toFile(root);
+        if(f.equals(root))
+        	return false;
+        boolean isDeleted;
+        
+        if(!f.isDirectory())
+        	isDeleted = f.delete();
+        else
+        	isDeleted = deleteRecursive(f);
+        
+        //Delete empty parent directories
+        if(isDeleted)
+        {
+        	File parent = f.getParentFile();
+        	while(parent.isDirectory() && (parent.listFiles().length == 0) && !parent.equals(root))
+        	{
+        		parent.delete();
+        		parent = parent.getParentFile();
+        	}
+        }
+        return isDeleted;
+    }
+
+    @Override
+    public synchronized boolean copy(Path file, Storage server)
+        throws RMIException, FileNotFoundException, IOException
+    {
+        if(server == null || file == null)
+        	throw new NullPointerException();
+        
+        File f = file.toFile(root);
+        //Deletion step?
+        long fileSize = server.size(file);
+        create(file);
+        byte[] byteStream;
+        
+        long offset = 0;
+        while(offset < fileSize)
+        {
+        	//read in int size chunks
+        	int length = (int) Math.min(Integer.MAX_VALUE, fileSize - offset);
+        	byteStream = server.read(file, offset, length);
+        	write(file, offset, byteStream);
+        	offset += length;
+        }
+        return true;
     }
 }
