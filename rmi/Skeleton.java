@@ -85,7 +85,7 @@ public class Skeleton<T>
             throw new NullPointerException("c is null");
         } else if (server == null) {
             throw new NullPointerException("server is null");
-        } else if (Stub.checkInterface(c)) {
+        } else if (!Stub.checkInterface(c)) {
             throw new Error("c is not a remote interface");
         }
         

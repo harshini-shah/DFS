@@ -47,7 +47,7 @@ public class ConformanceTests
 //                         conformance.naming.CreationTest.class,
 //                         conformance.naming.StubRetrievalTest.class};
         
-        Class<? extends Test>[] tests = new Class[] {conformance.common.PathTest.class, conformance.rmi.SkeletonTest.class, conformance.rmi.StubTest.class, conformance.rmi.ConnectionTest.class};
+        Class<? extends Test>[] tests = new Class[] {conformance.rmi.SkeletonTest.class};
         
         Series                      series = new Series(tests);
         SeriesReport                report = series.run(3, System.out);
