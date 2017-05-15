@@ -62,7 +62,7 @@ public class StubProxyHandler implements InvocationHandler, Serializable {
             
             // If all the conditions are satisfied, then return true 
             return true;
-        } else if (method.equals(Object.class.getMethod("hashcode"))) {
+        } else if (method.equals(Object.class.getMethod("hashCode"))) {
             // Return the hashcode of this object
             return this.remoteClass.hashCode() ^ this.address.hashCode();
         } else if (method.equals(Object.class.getMethod("toString"))) {
