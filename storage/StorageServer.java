@@ -8,7 +8,6 @@ import java.nio.channels.FileChannel;
 import common.*;
 import rmi.*;
 import naming.*;
-import common.*;
 
 /** Storage server.
 
@@ -27,6 +26,22 @@ public class StorageServer implements Storage, Command
 	public void setStoppedCause(Throwable stoppedCause)
 	{
 		this.stoppedCause = stoppedCause;
+	}
+	
+	public Throwable getStoppedCause() 
+	{
+        return this.stoppedCause;
+	}
+	
+	public void removeEmptyDirectories(File dir)
+	{
+		if(!dir.isDirectory())
+			return;
+		
+		for(File subDir: dir.listFiles())
+			removeEmptyDirectories(subDir);
+		if(!dir.equals(root) && dir.listFiles().length == 0 )
+			dir.delete();
 	}
 
 	/** Creates a storage server, given a directory on the local filesystem, and
@@ -100,7 +115,18 @@ public class StorageServer implements Storage, Command
     public synchronized void start(String hostname, Registration naming_server)
         throws RMIException, UnknownHostException, FileNotFoundException
     {
-        throw new UnsupportedOperationException("not implemented");
+    	commandSkeleton.start();
+    	storageSkeleton.start();
+    	
+    	//Returns relative paths of all files in root
+    	Path currentFiles[] = Path.list(root);
+    	//register() returns redundant files
+    	Path[] redundant = naming_server.register(Stub.create(Storage.class, storageSkeleton, hostname),
+    											Stub.create(Command.class, commandSkeleton, hostname), currentFiles);
+    	for(Path path: redundant)
+    		delete(path);
+    	//Trim all empty directories
+    	removeEmptyDirectories(root);
     }
 
     /** Stops the storage server.
@@ -110,7 +136,14 @@ public class StorageServer implements Storage, Command
      */
     public void stop()
     {
-        throw new UnsupportedOperationException("not implemented");
+    	//Stop both services
+        if(!commandSkeleton.stopped)
+        	commandSkeleton.stop();
+        if(!storageSkeleton.stopped)
+        	storageSkeleton.stop();
+        
+        //Call stopped() when shutting down
+        stopped(getStoppedCause());
     }
 
     /** Called when the storage server has shut down.
@@ -120,7 +153,7 @@ public class StorageServer implements Storage, Command
      */
     protected void stopped(Throwable cause)
     {
-    	System.out.println("Storage server stopped");
+    	System.out.println("Storage server has been stopped");
         if (cause != null) 
         { 
             cause.printStackTrace(); 
@@ -271,6 +304,7 @@ public class StorageServer implements Storage, Command
         return isDeleted;
     }
 
+<<<<<<< HEAD
 //    @Override
 //    public synchronized boolean copy(Path file, Storage server)
 //        throws RMIException, FileNotFoundException, IOException
@@ -295,4 +329,31 @@ public class StorageServer implements Storage, Command
 //        }
 //        return true;
 //    }
+=======
+    /*Required for phase 2
+    @Override
+    public synchronized boolean copy(Path file, Storage server)
+        throws RMIException, FileNotFoundException, IOException
+    {
+        if(server == null || file == null)
+        	throw new NullPointerException();
+        
+        File f = file.toFile(root);
+        //Deletion step?
+        long fileSize = server.size(file);
+        create(file);
+        byte[] byteStream;
+        
+        long offset = 0;
+        while(offset < fileSize)
+        {
+        	//read in int size chunks
+        	int length = (int) Math.min(Integer.MAX_VALUE, fileSize - offset);
+        	byteStream = server.read(file, offset, length);
+        	write(file, offset, byteStream);
+        	offset += length;
+        }
+        return true;
+    }*/
+>>>>>>> 882cffcaa05da9511dda81151e4508fe849937ae
 }
