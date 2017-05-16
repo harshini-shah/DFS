@@ -22,7 +22,7 @@ public class ServerTest {
             e.printStackTrace();
         }
         
-        // Console does not work in eclipse so using the standard IO
+//         Console does not work in eclipse so using the standard IO
         Console console = System.console();
         System.out.println("Console is " + console);
         if (console != null) {

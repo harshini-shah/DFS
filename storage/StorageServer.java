@@ -141,22 +141,23 @@ public class StorageServer implements Storage, Command
 
     @Override
     public synchronized byte[] read(Path file, long offset, int length)
-        throws FileNotFoundException, IOException
+        throws FileNotFoundException, IOException, IndexOutOfBoundsException
     {
     	File f = file.toFile(root);
         
         if(!f.isFile())
         	throw new FileNotFoundException("File does not exist or is not a normal file");
-        if(offset+length > f.length() || offset < 0 || length < 0)
-        	throw new IndexOutOfBoundsException();
+        if(offset + length > f.length() || offset < 0 || length < 0)
+        	throw new IndexOutOfBoundsException("The offset and length do not conform to the file size");
         
         FileInputStream fis = new FileInputStream(f);
         byte[] byteStream = new byte[length];
         fis.skip(offset);
-        fis.read(byteStream);
+        fis.read(byteStream);   // will throw IOException
         
-        if(fis != null)
-       		fis.close();
+        if (fis != null) {
+            fis.close();
+        }
                 
         return byteStream;
     }
@@ -167,9 +168,9 @@ public class StorageServer implements Storage, Command
     {
     	File f = file.toFile(root);
         
-        if(!f.isFile())
+        if (!f.isFile())
         	throw new FileNotFoundException("File does not exist or is not a normal file");
-        if( offset < 0 )
+        if (offset < 0)
         	throw new IndexOutOfBoundsException();
         
         //Appending to a file with an offset does not make sense
@@ -178,9 +179,9 @@ public class StorageServer implements Storage, Command
         ch.position(offset);
         fos.write(data);
         
-        if(fos != null)
-       		fos.close();
-        
+        if (fos != null) {
+            fos.close();
+        }
     }
 
     // The following methods are documented in Command.java.
@@ -188,6 +189,7 @@ public class StorageServer implements Storage, Command
     public synchronized boolean create(Path file)
     {
         File f = file.toFile(root);
+        
         //Path can't be root itself
         if(f.equals(root))
         	return false;
@@ -196,43 +198,35 @@ public class StorageServer implements Storage, Command
         Iterator<String> iter = file.iterator();
         File path = root;
         
-        while(iter.hasNext())
-        {
-        	File subDirectory = new File(path, iter.next());
-        	if(iter.hasNext())
-        	{
-        		if(!subDirectory.exists())
-        		{
-        			if(subDirectory.mkdir())
-        				path = subDirectory;
-        			else
-        				return false;
-        		}
-        		else if(!subDirectory.isDirectory())
-        		{
-        			return false;
-        		}
-        		else
-        		{
-        			path = subDirectory;
-        		}
-        	}
-        	//Create the file which is the last component of the path
-        	else
-        	{
-        		try
-        		{
-        			return subDirectory.createNewFile();
-        		}catch(IOException ex)
-        		{
-        			ex.printStackTrace();
-        			return false;
-        		}
-        	}
+        while (iter.hasNext()) {
+            File subDirectory = new File(path, iter.next());    // creates subdirectory 
+            if (iter.hasNext()) {
+                if (!subDirectory.exists()) {
+                    if (subDirectory.mkdir()) {
+                        path = subDirectory;
+                    } else {
+                        return false;
+                    }
+                } else if (!subDirectory.isDirectory()) {
+                    return false;
+                } else {
+                    path = subDirectory;
+                }
+            } else {
+                // Create the file which is the last component of the path
+                try {
+                    return subDirectory.createNewFile();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
+        
         //If all fails
 		throw new Error("Create() failed"); 
     }
+    
+    
     public boolean deleteRecursive(File file)
     {
     	for(File child: file.listFiles())
