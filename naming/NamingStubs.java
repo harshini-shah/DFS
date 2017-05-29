@@ -2,7 +2,7 @@ package naming;
 
 import java.net.*;
 
-import rmi.*;
+import rmi.Stub;
 
 /** Default port numbers for the naming server and convenience methods for
     making naming server stubs. */

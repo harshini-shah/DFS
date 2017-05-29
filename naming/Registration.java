@@ -27,6 +27,11 @@ public interface Registration
         files can be found. This includes, for example, directories which
         contain only empty directories.
 
+        <p>
+        Registration requries the naming server to lock the root directory for
+        exclusive access. Therefore, it is best done when there is not heavy
+        usage of the filesystem.
+
         @param client_stub Storage server client service stub. This will be
                            given to clients when operations need to be performed
                            on a file on the storage server.
