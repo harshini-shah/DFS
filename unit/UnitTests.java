@@ -5,10 +5,7 @@ import test.*;
 /** Runs all unit tests on distributed filesystem components.
 
     <p>
-    Tests run are:
-    <ul>
-    <li>{@link common.SampleUnitTest}</li>
-    </ul>
+    There are currently no unit tests.
  */
 public class UnitTests
 {
@@ -21,7 +18,7 @@ public class UnitTests
         // Create the test list, the series object, and run the test series.
         @SuppressWarnings("unchecked")
         Class<? extends Test>[]     tests =
-            new Class[] {common.SampleUnitTest.class};
+            new Class[] {};
         Series                      series = new Series(tests);
         SeriesReport                report = series.run(3, System.out);
 

@@ -27,21 +27,6 @@
     naming server's directory tree.
 
     <p>
-    The naming server supports file and directory <em>locking</em>. Operations
-    that would modify a file or the directory tree must be preceded by a request
-    to lock the object in question for <em>exclusive</em> (write) access.
-    Operations that would merely access an object must be preceded by a request
-    to lock the object for <em>shared</em> (read) access. Locking an object
-    involves locking the entire path to the parent of the object for shared
-    access.
-
-    <p>
-    Commonly-accessed files are <em>replicated</em>: additional storage servers
-    are chosen to host them, if they are available. When a replicated file is
-    accessed for writing, all copies of the file but one are
-    <em>invalidated</em> (deleted).
-
-    <p>
     The naming server provides two interfaces: a <em>service interface</em>
     through which clients can perform naming server operations and obtain stubs
     for storage servers, and a <em>registration interface</em>, through which

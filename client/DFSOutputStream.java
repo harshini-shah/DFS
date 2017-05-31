@@ -40,6 +40,9 @@ public class DFSOutputStream extends OutputStream
     /** Creates a <code>DFSOutputStream</code> for a file listed by the given
         naming server.
 
+        <p>
+        The file should be locked on the naming server for exclusive access.
+
         @param naming_server Stub for the naming server hosting metadata for the
                              file.
         @param file Path to the file.
@@ -71,7 +74,8 @@ public class DFSOutputStream extends OutputStream
         naming server.
 
         <p>
-        The naming server is contacted on the default client interface port.
+        The file should be locked on the naming server for exclusive access. The
+        naming server is contacted on the default client interface port.
 
         @param hostname Address of the naming server hosting metadata for the
                         file.
@@ -91,6 +95,9 @@ public class DFSOutputStream extends OutputStream
 
     /** Creates a <code>DFSOutputStream</code> for a file listed by the given
         naming server.
+
+        <p>
+        The file should be locked on the naming server for exclusive access.
 
         @param naming_server Stub for the naming server hosting metadata for the
                              file.
@@ -112,7 +119,8 @@ public class DFSOutputStream extends OutputStream
         naming server.
 
         <p>
-        The naming server is contacted on the default client interface port.
+        The file should be locked on the naming server for exclusive access. The
+        naming server is contacted on the default client interface port.
 
         @param hostname Address of the naming server hosting metadata for the
                         file.
