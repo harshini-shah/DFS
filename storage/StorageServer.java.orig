@@ -18,7 +18,7 @@ import naming.*;
  */
 public class StorageServer implements Storage, Command
 {
-	private final File root; //root filesystem for this Storage server
+	private final File root; //root file system for this Storage server
 	private CommandSkeleton<Command> commandSkeleton;
 	private StorageSkeleton<Storage> storageSkeleton;
 	Throwable stoppedCause;
@@ -304,6 +304,7 @@ public class StorageServer implements Storage, Command
         return isDeleted;
     }
 
+<<<<<<< HEAD
 //    @Override
 //    public synchronized boolean copy(Path file, Storage server)
 //        throws RMIException, FileNotFoundException, IOException
@@ -328,6 +329,7 @@ public class StorageServer implements Storage, Command
 //        }
 //        return true;
 //    }
+=======
     /*Required for phase 2
     @Override
     public synchronized boolean copy(Path file, Storage server)
@@ -353,4 +355,5 @@ public class StorageServer implements Storage, Command
         }
         return true;
     }*/
+>>>>>>> 882cffcaa05da9511dda81151e4508fe849937ae
 }

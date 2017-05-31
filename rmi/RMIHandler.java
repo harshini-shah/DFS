@@ -23,10 +23,10 @@ public class RMIHandler<T> implements Runnable {
     @ Override
     public void run() {
         try {
-            ObjectOutputStream outputStream = new ObjectOutputStream((socket.getOutputStream()));
-            outputStream.flush();
+            ObjectOutputStream outputStream = new ObjectOutputStream(socket.getOutputStream());
             ObjectInputStream inputStream = new ObjectInputStream(socket.getInputStream());
-
+            outputStream.flush();
+            
             // Get the call information
             String methodName = (String) inputStream.readObject();
             int numParameters = (Integer) inputStream.readObject();

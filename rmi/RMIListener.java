@@ -44,9 +44,9 @@ public class RMIListener<T> extends Thread {
                 }
             }
         }
-
         // All code below is to stop the listener and skeleton
         pool.shutdown();
+        System.out.println(pool.isShutdown());
         
         try {
             pool.awaitTermination(1, TimeUnit.MINUTES);
