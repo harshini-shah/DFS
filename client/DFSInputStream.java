@@ -19,6 +19,12 @@ import storage.*;
 
     <p>
     <code>DFSInputStream</code> does not support marks.
+    <code>DFSInputStream</code> does not provide locking. This must be done
+    manually by the user. The reason for this is that if
+    <code>DFSInputStream</code> attempted to lock a file for shared access, it
+    would not be possible to combine use of the input stream with other
+    operations, such as retrieving file size, or operations that require the
+    parent directory of the file to be locked for exclusive access.
  */
 public class DFSInputStream extends InputStream
 {
@@ -39,6 +45,9 @@ public class DFSInputStream extends InputStream
 
     /** Creates a <code>DFSInputStream</code> for a file listed by the given
         naming server.
+
+        <p>
+        The file should be locked on the naming server for shared access.
 
         @param naming_server Stub for the naming server hosting metadata for the
                              file.
@@ -81,7 +90,8 @@ public class DFSInputStream extends InputStream
         naming server.
 
         <p>
-        The naming server is contacted on the default client interface port.
+        The file should be locked on the naming server for shared access. The
+        naming server is contacted on the default client interface port.
 
         @param hostname Address of the naming server hosting metadata for the
                         file.
@@ -101,6 +111,9 @@ public class DFSInputStream extends InputStream
 
     /** Creates a <code>DFSInputStream</code> for a file listed by the given
         naming server.
+
+        <p>
+        The file should be locked on the naming server for shared access.
 
         @param naming_server Stub for the naming server hosting metadata for the
                              file.
@@ -122,7 +135,8 @@ public class DFSInputStream extends InputStream
         naming server.
 
         <p>
-        The naming server is contacted on the default client interface port.
+        The file should be locked on the naming server for shared access. The
+        naming server is contacted on the default client interface port.
 
         @param hostname Address of the naming server hosting metadata for the
                         file.

@@ -46,11 +46,11 @@ public class StorageServer implements Storage, Command
 
 	/** Creates a storage server, given a directory on the local filesystem, and
         ports to use for the client and command interfaces.
-
+    
         <p>
         The ports may have to be specified if the storage server is running
         behind a firewall, and specific ports are open.
-
+    
         @param root Directory on the local filesystem. The contents of this
                     directory will be accessible through the storage server.
         @param client_port Port to use for the client interface, or zero if the
@@ -61,19 +61,7 @@ public class StorageServer implements Storage, Command
     */
     public StorageServer(File root, int client_port, int command_port)
     {
-        if(root == null)
-        	throw new NullPointerException("Root was null");
-        this.root = root;
-        
-        if(client_port == 0)
-        	storageSkeleton = new StorageSkeleton(Storage.class, this);
-        else
-        	storageSkeleton = new StorageSkeleton(Storage.class, this, new InetSocketAddress(client_port));
-        
-        if(command_port == 0)
-        	commandSkeleton = new CommandSkeleton(Command.class, this);
-        else
-        	commandSkeleton = new CommandSkeleton(Command.class, this, new InetSocketAddress(command_port));
+        throw new UnsupportedOperationException("not implemented");
     }
 
     /** Creates a storage server, given a directory on the local filesystem.
@@ -304,53 +292,10 @@ public class StorageServer implements Storage, Command
         return isDeleted;
     }
 
-//    @Override
-//    public synchronized boolean copy(Path file, Storage server)
-//        throws RMIException, FileNotFoundException, IOException
-//    {
-//        if(server == null || file == null)
-//        	throw new NullPointerException();
-//        
-//        File f = file.toFile(root);
-//        //Deletion step?
-//        long fileSize = server.size(file);
-//        create(file);
-//        byte[] byteStream;
-//        
-//        long offset = 0;
-//        while(offset < fileSize)
-//        {
-//        	//read in int size chunks
-//        	int length = (int) Math.min(Integer.MAX_VALUE, fileSize - offset);
-//        	byteStream = server.read(file, offset, length);
-//        	write(file, offset, byteStream);
-//        	offset += length;
-//        }
-//        return true;
-//    }
-    /*Required for phase 2
     @Override
     public synchronized boolean copy(Path file, Storage server)
         throws RMIException, FileNotFoundException, IOException
     {
-        if(server == null || file == null)
-        	throw new NullPointerException();
-        
-        File f = file.toFile(root);
-        //Deletion step?
-        long fileSize = server.size(file);
-        create(file);
-        byte[] byteStream;
-        
-        long offset = 0;
-        while(offset < fileSize)
-        {
-        	//read in int size chunks
-        	int length = (int) Math.min(Integer.MAX_VALUE, fileSize - offset);
-        	byteStream = server.read(file, offset, length);
-        	write(file, offset, byteStream);
-        	offset += length;
-        }
-        return true;
-    }*/
+        throw new UnsupportedOperationException("not implemented");
+    }
 }
