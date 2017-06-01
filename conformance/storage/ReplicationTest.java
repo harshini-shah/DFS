@@ -48,6 +48,7 @@ public class ReplicationTest extends StorageTest
     /** Creates the <code>ReplicationTest</code> object. */
     public ReplicationTest()
     {
+        
         super(new String[][] {new String[] {"file4"}}, null);
     }
 
@@ -58,6 +59,7 @@ public class ReplicationTest extends StorageTest
     @Override
     protected void perform() throws TestFailed
     {
+        System.out.println("****************************************************");
         testBadValues();
         testCreation();
         testReplacement();
@@ -271,6 +273,8 @@ public class ReplicationTest extends StorageTest
             throw new TestFailed("copy threw unexpected exception when given " +
                                  "directory", t);
         }
+        
+        System.out.println("************ Passes bad tests ***********");
     }
 
     /** Initializes the test.
@@ -340,6 +344,7 @@ public class ReplicationTest extends StorageTest
 
         // Retrieve storage server client interface stub.
         second_stub = naming_server.clientInterface();
+        System.out.println("******** Initialized ********************");
     }
 
     /** Stops all servers and removes all temporary directories.

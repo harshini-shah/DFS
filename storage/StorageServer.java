@@ -1,7 +1,9 @@
 package storage;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.net.*;
 import java.nio.channels.FileChannel;
 
@@ -22,6 +24,7 @@ public class StorageServer implements Storage, Command
 	private CommandSkeleton<Command> commandSkeleton;
 	private StorageSkeleton<Storage> storageSkeleton;
 	Throwable stoppedCause;
+	private static final int CHUNK_SIZE = 1000000; // Chunk size when files are copied
 	
 	public void setStoppedCause(Throwable stoppedCause)
 	{
@@ -61,8 +64,15 @@ public class StorageServer implements Storage, Command
     */
     public StorageServer(File root, int client_port, int command_port)
     {
-        throw new UnsupportedOperationException("not implemented");
+        if (root == null) {
+            throw new NullPointerException("Root cannot be null");
+        }
+        this.root = root;
+        
+        storageSkeleton = new StorageSkeleton<Storage>(Storage.class, this, new InetSocketAddress(client_port));
+        commandSkeleton = new CommandSkeleton<Command>(Command.class, this, new InetSocketAddress(command_port));
     }
+    
 
     /** Creates a storage server, given a directory on the local filesystem.
 
@@ -77,7 +87,13 @@ public class StorageServer implements Storage, Command
      */
     public StorageServer(File root)
     {
-        this(root, 0, 0);
+        if (root == null) {
+            throw new NullPointerException("Root cannot be null");
+        }
+        this.root = root;
+        
+        storageSkeleton = new StorageSkeleton<Storage>(Storage.class, this);
+        commandSkeleton = new CommandSkeleton<Command>(Command.class, this);
     }
 
     /** Starts the storage server and registers it with the given naming
@@ -296,6 +312,36 @@ public class StorageServer implements Storage, Command
     public synchronized boolean copy(Path file, Storage server)
         throws RMIException, FileNotFoundException, IOException
     {
-        throw new UnsupportedOperationException("not implemented");
+        // Check that server is not null - if it is null, throw NullPointerException
+        if (server == null) {
+            throw new NullPointerException("Storage server cannot be null");
+        }
+        
+        // Check that the path is not null - throw NullPointerException if required
+        if (file == null) {
+            throw new NullPointerException("Path of file to be copied cannot be null");
+        }
+        
+        // Create the file
+        create(file);
+        
+        // Copy the file in chunks of 1 MB        
+        long size = server.size(file);
+        long offset = 0;
+        byte[] chunk = new byte[CHUNK_SIZE];
+        
+        while ((offset + CHUNK_SIZE) < size) {
+            chunk = server.read(file, offset, CHUNK_SIZE);
+            write(file, offset, chunk);
+            offset += CHUNK_SIZE;
+        }
+        
+        // Copy left over bytes
+        int finalChunkSize = (int) (size - offset);
+        byte[] finalChunk = new byte[finalChunkSize];
+        finalChunk = server.read(file, offset, finalChunkSize);
+        write(file, offset, finalChunk);
+        
+        return true;
     }
 }

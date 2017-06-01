@@ -47,15 +47,16 @@ public class ConformanceTests
                          conformance.storage.AccessTest.class,
                          conformance.storage.DirectoryTest.class,
                          conformance.storage.ReplicationTest.class,
-                         conformance.naming.ContactTest.class,
-                         conformance.naming.RegistrationTest.class,
-                         conformance.naming.ListingTest.class,
-                         conformance.naming.CreationTest.class,
-                         conformance.naming.StubRetrievalTest.class,
-                         conformance.naming.LockTest.class,
-                         conformance.naming.QueueTest.class,
-                         conformance.naming.ReplicationTest.class,
-                         conformance.naming.DeletionTest.class};
+//                         conformance.naming.ContactTest.class,
+//                         conformance.naming.RegistrationTest.class,
+//                         conformance.naming.ListingTest.class,
+//                         conformance.naming.CreationTest.class,
+//                         conformance.naming.StubRetrievalTest.class,
+//                         conformance.naming.LockTest.class,
+//                         conformance.naming.QueueTest.class,
+//                         conformance.naming.ReplicationTest.class,
+//                         conformance.naming.DeletionTest.class
+                         };
         Series                      series = new Series(tests);
         SeriesReport                report = series.run(3, System.out);
 
