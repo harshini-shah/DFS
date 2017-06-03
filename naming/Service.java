@@ -102,9 +102,10 @@ public interface Service
         @throws RMIException If the call cannot be completed due to a network
                              error. This includes server shutdown while a client
                              is waiting to obtain the lock.
+     * @throws InterruptedException 
      */
     public void lock(Path path, boolean exclusive)
-        throws RMIException, FileNotFoundException;
+        throws RMIException, FileNotFoundException, InterruptedException;
 
     /** Unlocks a file or directory.
 
@@ -137,9 +138,10 @@ public interface Service
                                       <code>path</code> cannot be found.
         @throws RMIException If the call cannot be completed due to a network
                              error.
+     * @throws InterruptedException 
      */
     public boolean isDirectory(Path path)
-        throws RMIException, FileNotFoundException;
+        throws RMIException, FileNotFoundException, InterruptedException;
 
     /** Lists the contents of a directory.
 
@@ -154,9 +156,10 @@ public interface Service
                                       directory.
         @throws RMIException If the call cannot be completed due to a network
                              error.
+     * @throws InterruptedException 
      */
     public String[] list(Path directory)
-        throws RMIException, FileNotFoundException;
+        throws RMIException, FileNotFoundException, InterruptedException;
 
     /** Creates the given file, if it does not exist.
 
@@ -173,9 +176,10 @@ public interface Service
                                       naming server.
         @throws RMIException If the call cannot be completed due to a network
                              error.
+     * @throws InterruptedException 
      */
     public boolean createFile(Path file)
-        throws RMIException, FileNotFoundException;
+        throws RMIException, FileNotFoundException, InterruptedException;
 
     /** Creates the given directory, if it does not exist.
 
@@ -190,9 +194,10 @@ public interface Service
         @throws FileNotFoundException If the parent directory does not exist.
         @throws RMIException If the call cannot be completed due to a network
                              error.
+     * @throws InterruptedException 
      */
     public boolean createDirectory(Path directory)
-        throws RMIException, FileNotFoundException;
+        throws RMIException, FileNotFoundException, InterruptedException;
 
     /** Deletes a file or directory.
 
@@ -208,8 +213,9 @@ public interface Service
                                       exist.
         @throws RMIException If the call cannot be completed due to a network
                              error.
+     * @throws InterruptedException 
      */
-    public boolean delete(Path path) throws RMIException, FileNotFoundException;
+    public boolean delete(Path path) throws RMIException, FileNotFoundException, InterruptedException;
 
     /** Returns a stub for the storage server hosting a file.
 

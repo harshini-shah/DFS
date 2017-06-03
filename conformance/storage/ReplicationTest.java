@@ -59,7 +59,6 @@ public class ReplicationTest extends StorageTest
     @Override
     protected void perform() throws TestFailed
     {
-        System.out.println("****************************************************");
         testBadValues();
         testCreation();
         testReplacement();
@@ -274,7 +273,6 @@ public class ReplicationTest extends StorageTest
                                  "directory", t);
         }
         
-        System.out.println("************ Passes bad tests ***********");
     }
 
     /** Initializes the test.
@@ -344,7 +342,6 @@ public class ReplicationTest extends StorageTest
 
         // Retrieve storage server client interface stub.
         second_stub = naming_server.clientInterface();
-        System.out.println("******** Initialized ********************");
     }
 
     /** Stops all servers and removes all temporary directories.

@@ -3,7 +3,6 @@ package conformance;
 import test.*;
 
 /** Runs all conformance tests on distributed filesystem components.
-
     <p>
     Tests performed are:
     <ul>
@@ -30,7 +29,6 @@ import test.*;
 public class ConformanceTests
 {
     /** Runs the tests.
-
         @param arguments Ignored.
      */
     public static void main(String[] arguments)
@@ -40,21 +38,21 @@ public class ConformanceTests
         Class<? extends Test>[]     tests =
             new Class[] {conformance.common.PathTest.class,
                          conformance.rmi.SkeletonTest.class,
-                         conformance.rmi.StubTest.class,
-                         conformance.rmi.ConnectionTest.class,
-                         conformance.rmi.ThreadTest.class,
-                         conformance.storage.RegistrationTest.class,
-                         conformance.storage.AccessTest.class,
-                         conformance.storage.DirectoryTest.class,
-                         conformance.storage.ReplicationTest.class,
-//                         conformance.naming.ContactTest.class,
-//                         conformance.naming.RegistrationTest.class,
+//                         conformance.rmi.StubTest.class,
+//                         conformance.rmi.ConnectionTest.class,
+//                         conformance.rmi.ThreadTest.class,
+//                         conformance.storage.RegistrationTest.class,
+//                         conformance.storage.AccessTest.class,
+//                         conformance.storage.DirectoryTest.class,
+//                         conformance.storage.ReplicationTest.class,
+                         conformance.naming.ContactTest.class,
+                         conformance.naming.RegistrationTest.class,
 //                         conformance.naming.ListingTest.class,
 //                         conformance.naming.CreationTest.class,
 //                         conformance.naming.StubRetrievalTest.class,
-//                         conformance.naming.LockTest.class,
+                         conformance.naming.LockTest.class,
 //                         conformance.naming.QueueTest.class,
-//                         conformance.naming.ReplicationTest.class,
+                         conformance.naming.ReplicationTest.class,
 //                         conformance.naming.DeletionTest.class
                          };
         Series                      series = new Series(tests);

@@ -1,12 +1,17 @@
+/*
+ * Each file/directory in the File System is of type FileNode. 
+ */
+
 package naming;
 
-import java.io.*;
-import java.net.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import rmi.*;
-import common.*;
-import storage.*;
+import common.Path;
+import storage.Command;
+import storage.Storage;
 
 
 public class FileNode
@@ -18,9 +23,16 @@ public class FileNode
    String pathComponent;
    FileNode parent;
    Path path;
+//   ReadWriteLock lock = null;
+   int readLockCounter = 0;
+   boolean writeLock = false;
+   int writeRequests = 0;
+   
+   int numRequests;
    
    FileNode(Storage client_stub, Command command_stub, boolean isFile, Path path, String pathComponent)
    {
+//	   lock = new ReentrantReadWriteLock(true);
 	   this.path = path;
 	   this.pathComponent = pathComponent;
 	   serverList = new ArrayList<Storage>();
@@ -28,6 +40,7 @@ public class FileNode
 	   
 	   commandList = new ArrayList<Command>();
 	   commandList.add(command_stub);
+	   this.numRequests = 0;
 	   
 	   this.isFile = isFile;
 	   if(isFile)

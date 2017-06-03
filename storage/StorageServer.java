@@ -321,14 +321,16 @@ public class StorageServer implements Storage, Command
         if (file == null) {
             throw new NullPointerException("Path of file to be copied cannot be null");
         }
+     
         
-        // Create the file
-        create(file);
         
         // Copy the file in chunks of 1 MB        
         long size = server.size(file);
         long offset = 0;
         byte[] chunk = new byte[CHUNK_SIZE];
+        
+        // Create the file
+        create(file);
         
         while ((offset + CHUNK_SIZE) < size) {
             chunk = server.read(file, offset, CHUNK_SIZE);

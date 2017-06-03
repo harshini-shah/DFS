@@ -1,10 +1,13 @@
+/*
+ * The synchronized common Distributed File System Directory Tree.
+ */
+
 package naming;
 
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 import common.Path;
 import rmi.RMIException;
@@ -17,7 +20,7 @@ public class FileTree {
 
 	FileTree()
 	{
-		root = new FileNode(null, null, false, null, "root");
+		root = new FileNode(null, null, false, new Path(), "root");
 	}
 	
 	public FileNode getRoot()
@@ -59,7 +62,7 @@ public class FileTree {
 	
 	public FileNode getNode(Path path)
 	{
-		FileNode node = root;
+  		FileNode node = root;
 		if(path.isRoot())
 		{
 			return root;

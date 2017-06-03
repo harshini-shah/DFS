@@ -60,6 +60,7 @@ public class ReplicationTest extends NamingTest
             try
             {
                 service_stub.lock(replicate_file, false);
+                System.out.println(" Finished locking ");
             }
             catch(Throwable t)
             {
