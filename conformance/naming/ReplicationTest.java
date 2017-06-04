@@ -206,6 +206,7 @@ public class ReplicationTest extends NamingTest
         @Override
         public boolean copy(Path file, Storage server)
         {
+            System.out.println("Entered Copy.....");
             // Check that neither argument is null.
             if(file == null)
             {

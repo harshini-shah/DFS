@@ -1,10 +1,12 @@
-package naming;
+/*
+ * The synchronized common Distributed File System Directory Tree.
+ */
 
+package naming;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 import common.Path;
 import rmi.RMIException;
@@ -17,7 +19,7 @@ public class FileTree {
 
 	FileTree()
 	{
-		root = new FileNode(null, null, false, null, "root");
+		root = new FileNode(null, null, false, new Path(), "root");
 	}
 	
 	public FileNode getRoot()
@@ -49,24 +51,19 @@ public class FileTree {
 	   }
 	   for(int i = 0; i < children.size(); i++)
 	   {
-//		   System.out.println(children.get(i).getPath());
 		   DFS(children.get(i));
-//		   System.out.println();
-	   }
-	   
+	   }	   
     }
-	   
-	
+	   	
 	public FileNode getNode(Path path)
 	{
-		FileNode node = root;
+	    FileNode node = root;
 		if(path.isRoot())
 		{
 			return root;
 		}
 		
 		Iterator<String> pathIterator = path.iterator();
-		FileNode foundNode = null;
 		while(pathIterator.hasNext())
 		{
 			String pathComponent = pathIterator.next();
@@ -79,57 +76,34 @@ public class FileTree {
 			{
 				return node;
 			}
-			foundNode = node;
 		}
-		return foundNode;
+	    return node;
 	}
 	
 	public List<FileNode> getDescendents()
 	{
-	   List<FileNode> descendents = new ArrayList<FileNode>();
-//	   getDescendents(new ArrayList<FileNode>(children.values()), descendents);
-	   return descendents;
+	    List<FileNode> descendents = new ArrayList<FileNode>();
+	    descendents = root.getDescendents();
+	    return descendents;
     }
    
-   public void deleteChildrenRecursively(List<FileNode> nodeChildren) throws RMIException
-   {	   
-	   for(FileNode node : nodeChildren)
-	   {
-		   List<FileNode> nextChildren = node.getChildren();
-		   if(nextChildren != null)
-		   {
-			   deleteChildrenRecursively(nextChildren);
-		   }
-		   for(Command command: node.getCommands())
-		   {
-			   command.delete(node.getPath());
-			   node.deleteCommand(command);
-		   }
-		   node.getParent().deleteChild(node);
-	   }
-   }
-
 	public void deleteNode(Path path) throws RMIException
-	{
-		FileNode node = getNode(path);
-		if(!node.isFile && node.getChildren().size() != 0)
-		{
-			deleteChildrenRecursively(node.getChildren());
-		}
-		node.getParent().deleteChild(node);		
+	{      
+	    FileNode node = getNode(path);
+	    for (Command command : node.getCommands()) {
+	        command.delete(path);    
+	    }
+	    
+	    node.getParent().deleteChild(node);             
 	}
 
 	public void addNode(Path path, Storage clientStub, Command commandStub, boolean isDirectory)
 	{
-		if(clientStub == null)
-		{
-			System.out.println("Yo" + path);
-		}
-//		System.out.println("Adding node:" + path.toString());
 		if(path == null)
 		{
-			return;
+		    throw new NullPointerException("Path to be added is null");
 		}
+		
 		FileNode node = root;
 		Iterator<String> pathIterator = path.iterator();
 		
@@ -139,27 +113,26 @@ public class FileTree {
 			boolean isFile = false;
 			if(node.getChild(pathComponent) == null)
 			{
+			    // Subdirectory does not exist
 				FileNode newNode = null;
-				if(!pathIterator.hasNext() && !isDirectory)				//is the last component i.e the file component
+				if(!pathIterator.hasNext() && !isDirectory)
 				{
+				    //is the last component i.e the file component
 					isFile = true;
 				}
-				System.out.println("Adding: " + clientStub + ":" + commandStub);
-				newNode = new FileNode(clientStub, commandStub, isFile, path, pathComponent);	//create the new node
-				node.addChild(pathComponent, newNode);						//add it to the parents childMap
-				newNode.setParent(node);
-				node = newNode;												//get reference to it
+				
+				newNode = new FileNode(clientStub, commandStub, isFile, path, pathComponent);   //create the new node
+				node.addChild(pathComponent, newNode);  //add it to the parents childMap
+                newNode.setParent(node);
+                node = newNode;     //get reference to it														
+			} else {
+			    // Subdirectory exists
+			    node = node.getChild(pathComponent);
+			    // Add the Storage and Command servers if not already there
+			    if (!node.getStorages().contains(clientStub)) {
+		             node.addServers(clientStub, commandStub);
+			    }
 			}
-			else
-			{
-				node = node.getChild(pathComponent);						//else just get reference to it
-			}
-		}
-		
-		System.out.println("Servers in list:" + getNode(path).getServers().size());
-		for(Storage server: getNode(path).getServers())
-		{
-			System.out.println(server);
 		}
 	}
 }

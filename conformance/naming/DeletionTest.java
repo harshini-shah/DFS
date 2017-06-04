@@ -239,6 +239,8 @@ public class DeletionTest extends NamingTest
         public synchronized boolean delete(Path path)
         {
             // Check that the path is not null.
+            
+            
             if(path == null)
             {
                 failure(new TestFailed("delete called with null as argument"));

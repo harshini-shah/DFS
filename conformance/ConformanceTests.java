@@ -3,7 +3,6 @@ package conformance;
 import test.*;
 
 /** Runs all conformance tests on distributed filesystem components.
-
     <p>
     Tests performed are:
     <ul>
@@ -30,7 +29,6 @@ import test.*;
 public class ConformanceTests
 {
     /** Runs the tests.
-
         @param arguments Ignored.
      */
     public static void main(String[] arguments)
@@ -55,7 +53,8 @@ public class ConformanceTests
                          conformance.naming.LockTest.class,
                          conformance.naming.QueueTest.class,
                          conformance.naming.ReplicationTest.class,
-                         conformance.naming.DeletionTest.class};
+                         conformance.naming.DeletionTest.class
+                         };
         Series                      series = new Series(tests);
         SeriesReport                report = series.run(3, System.out);
 

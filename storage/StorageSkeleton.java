@@ -1,3 +1,7 @@
+/*
+ * Sets up the skeleton for the storage server to talk to the client.
+ */
+
 package storage;
 
 import java.net.InetSocketAddress;

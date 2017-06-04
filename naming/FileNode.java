@@ -1,43 +1,65 @@
+/*
+ * Each file/directory in the File System is of type FileNode. 
+ * 
+ * TODO : Radomize the storage server returned if there are multiple copies. 
+ * Method to be modified is: getStorage().
+ */
+
 package naming;
 
-import java.io.*;
-import java.net.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import rmi.*;
-import common.*;
-import storage.*;
-
+import common.Path;
+import storage.Command;
+import storage.Storage;
 
 public class FileNode
 {
-   List<Storage> serverList;
-   List<Command> commandList;
-   Map<String, FileNode> children;
-   boolean isFile;
-   String pathComponent;
-   FileNode parent;
-   Path path;
+    private List<Storage> storageList;
+    private List<Command> commandList;
+    private Map<String, FileNode> children;
+    boolean isFile;
+    private String pathComponent;    // Actual name of this Node (can be file/dir)
+    private FileNode parent;
+    private Path path;
    
-   FileNode(Storage client_stub, Command command_stub, boolean isFile, Path path, String pathComponent)
-   {
-	   this.path = path;
-	   this.pathComponent = pathComponent;
-	   serverList = new ArrayList<Storage>();
-	   serverList.add(client_stub);
-	   
-	   commandList = new ArrayList<Command>();
-	   commandList.add(command_stub);
-	   
-	   this.isFile = isFile;
-	   if(isFile)
-	   {
-		   children = null;
-	   }
-	   else 
-	   {
-		   children = new HashMap<String, FileNode>();
-	   }
+    int readLockCounter;
+    boolean writeLock;
+    int writeRequests;
+    List<Long> threadIdQueue;
+
+    int numRequests;
+    int numReplicas;
+   
+    FileNode(Storage client_stub, Command command_stub, boolean isFile, Path path, String pathComponent)
+    {
+        this.path = path;
+        this.pathComponent = pathComponent;
+        storageList = new ArrayList<Storage>();
+        storageList.add(client_stub);
+        
+        commandList = new ArrayList<Command>();
+        commandList.add(command_stub);
+        
+        threadIdQueue = new ArrayList<Long>();
+    	   
+        this.numRequests = 0;
+        this.numReplicas = 1;
+        this.readLockCounter = 0;
+        this.writeRequests = 0;
+        this.writeLock = false;
+        this.parent = null;
+    	   
+        this.isFile = isFile;
+        
+        if(isFile) {
+            children = null;
+        } else {
+            children = new HashMap<String, FileNode>();
+        }
    } 
    
    public String getPathComponentName()
@@ -45,20 +67,43 @@ public class FileNode
 	   return pathComponent;
    }
    
+   public Path getPath()
+   {
+	   return path;
+   }
+
    public List<Command> getCommands()
    {
 	   return commandList;
    }
    
-   public List<FileNode> getChildren()
+   public List<Storage> getStorages()
    {
-	   if(children != null)
-	   {
-		   return new ArrayList<FileNode>(children.values());		   
-	   }
-	   return null;
+       return storageList;
    }
    
+   public void deleteServers(Storage storage, Command command)
+   {
+	   commandList.remove(command);
+	   storageList.remove(storage);
+   }
+   
+   public void addServers(Storage storage, Command command) {
+       this.commandList.add(command);
+       this.storageList.add(storage);
+       return;
+   }
+   
+   public void setParent(FileNode givenParent)
+   {
+	   parent =  givenParent;
+   }
+
+   public FileNode getParent()
+   {
+	   return parent;
+   }
+
    public String[] listChildren()
    {
 	   String[] childrenNames = new String[children.size()];
@@ -73,40 +118,43 @@ public class FileNode
 	   return childrenNames;
    }
    
-   public void setParent(FileNode givenParent)
+   public List<FileNode> getChildren()
    {
-	   parent =  givenParent;
+	   if(children != null)
+	   {
+		   return new ArrayList<FileNode>(children.values());		   
+	   }
+	   return null;
    }
-   
+
+   public void addChild(String pathComponent, FileNode childNode)
+   {
+	   children.put(pathComponent, childNode);
+   }
+
+   public FileNode getChild(String pathComponent)
+   {
+	   if(children.containsKey(pathComponent))
+	   {
+		   return children.get(pathComponent);
+	   }
+	   
+	   return null;
+   }
+
+   private void printChildren()
+   {
+	   int i = 0;
+	   for(String child : listChildren())
+	   {
+		   System.out.println(i + ":" + child);
+		   i++;
+	   } 
+   }
+
    public void deleteChild(FileNode child)
    {
-	   children.remove(child);
-   }
-   
-   public FileNode getParent()
-   {
-	   return parent;
-   }
-   
-   public Path getPath()
-   {
-	   return path;
-   }
-   
-   public void deleteCommand(Command command)
-   {
-	   commandList.remove(0);
-	   serverList.remove(0);
-   }
-   
-//   private void deleteServer(Storage server)
-//   {
-//	   serverList.remove(0);
-//   }
-//   
-   public List<Storage> getServers()
-   {
-	   return serverList;
+       children.remove(child.pathComponent);
    }
    
    public List<FileNode> getDescendents()
@@ -121,43 +169,21 @@ public class FileNode
 	   for(FileNode node : nodeChildren)
 	   {
 		   descendents.add(node);
-		   if(nodeChildren != null)
+		   if(node.children != null)
 		   {
 			   getDescendents(new ArrayList<FileNode>(node.children.values()), descendents);
 		   }
 	   } 
    }
    
-   
+   // Get the storage server associated with this file node
    public Storage getStorage()
    {
-	   if(!serverList.isEmpty())
+       // Check number of replicas - if this is n, then only the first n servers in both the
+       // lists are valid ones
+	   if(!storageList.isEmpty())
 	   {
-		   return serverList.get(0);
-	   }
-	   return null;
-   }
-   
-   private void printChildren()
-   {
-	   int i = 0;
-	   for(String child : listChildren())
-	   {
-		   System.out.println(i + ":" + child);
-		   i++;
-	   } 
-   }
-   
-   public void addChild(String pathComponent, FileNode childNode)
-   {
-	   children.put(pathComponent, childNode);
-   }
-    
-   public FileNode getChild(String pathComponent)
-   {
-	   if(children.containsKey(pathComponent))
-	   {
-		   return children.get(pathComponent);
+		   return storageList.get(0);
 	   }
 	   return null;
    }

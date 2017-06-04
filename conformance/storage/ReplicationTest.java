@@ -48,6 +48,7 @@ public class ReplicationTest extends StorageTest
     /** Creates the <code>ReplicationTest</code> object. */
     public ReplicationTest()
     {
+        
         super(new String[][] {new String[] {"file4"}}, null);
     }
 
@@ -271,6 +272,7 @@ public class ReplicationTest extends StorageTest
             throw new TestFailed("copy threw unexpected exception when given " +
                                  "directory", t);
         }
+        
     }
 
     /** Initializes the test.
