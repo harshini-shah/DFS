@@ -1,3 +1,7 @@
+/*
+ * Sets up the skeleton for the storage server to interact with the Naming Server. 
+ */
+
 package storage;
 
 import java.net.InetSocketAddress;
@@ -26,8 +30,9 @@ public class CommandSkeleton<T> extends Skeleton<T>
 	public void stopped(Throwable cause)
 	{
 		this.stopped = true;
-		if (cause != null)
-			this.storageServer.setStoppedCause(cause);
+		if (cause != null) {
+		    this.storageServer.setStoppedCause(cause);
+		}
 		storageServer.stop();
 	}
 }

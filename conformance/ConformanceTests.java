@@ -38,22 +38,22 @@ public class ConformanceTests
         Class<? extends Test>[]     tests =
             new Class[] {conformance.common.PathTest.class,
                          conformance.rmi.SkeletonTest.class,
-//                         conformance.rmi.StubTest.class,
-//                         conformance.rmi.ConnectionTest.class,
-//                         conformance.rmi.ThreadTest.class,
-//                         conformance.storage.RegistrationTest.class,
-//                         conformance.storage.AccessTest.class,
-//                         conformance.storage.DirectoryTest.class,
-//                         conformance.storage.ReplicationTest.class,
+                         conformance.rmi.StubTest.class,
+                         conformance.rmi.ConnectionTest.class,
+                         conformance.rmi.ThreadTest.class,
+                         conformance.storage.RegistrationTest.class,
+                         conformance.storage.AccessTest.class,
+                         conformance.storage.DirectoryTest.class,
+                         conformance.storage.ReplicationTest.class,
                          conformance.naming.ContactTest.class,
                          conformance.naming.RegistrationTest.class,
-//                         conformance.naming.ListingTest.class,
-//                         conformance.naming.CreationTest.class,
-//                         conformance.naming.StubRetrievalTest.class,
+                         conformance.naming.ListingTest.class,
+                         conformance.naming.CreationTest.class,
+                         conformance.naming.StubRetrievalTest.class,
                          conformance.naming.LockTest.class,
-//                         conformance.naming.QueueTest.class,
+                         conformance.naming.QueueTest.class,
                          conformance.naming.ReplicationTest.class,
-//                         conformance.naming.DeletionTest.class
+                         conformance.naming.DeletionTest.class
                          };
         Series                      series = new Series(tests);
         SeriesReport                report = series.run(3, System.out);

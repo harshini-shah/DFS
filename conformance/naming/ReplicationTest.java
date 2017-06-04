@@ -60,7 +60,6 @@ public class ReplicationTest extends NamingTest
             try
             {
                 service_stub.lock(replicate_file, false);
-                System.out.println(" Finished locking ");
             }
             catch(Throwable t)
             {
@@ -207,6 +206,7 @@ public class ReplicationTest extends NamingTest
         @Override
         public boolean copy(Path file, Storage server)
         {
+            System.out.println("Entered Copy.....");
             // Check that neither argument is null.
             if(file == null)
             {

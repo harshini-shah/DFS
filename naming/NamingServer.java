@@ -37,18 +37,13 @@ public class NamingServer implements Service, Registration
     Map<Storage, Command> serverToClientStubMapping;
     List<Storage> registeredStubs;
         
-    Skeleton<Service> serviceSkeleton;
-    
+    Skeleton<Service> serviceSkeleton;    
     Skeleton<Registration> registrationSkeleton;
     
-    // Added for replication - Maintaing num of requesters for each path
+    private static final int REPLICA_THRESHOLD = 20;
     
-    private static final float ALPHA = 1.0F;
-    private static final int REPLICA_UPPER_BOUND = 5;
-    
-    
+         
     /** Creates the naming server object.
-
         <p>
         The naming server is not started.
      */
@@ -67,7 +62,6 @@ public class NamingServer implements Service, Registration
     }
  
     /** Starts the naming server.
-
         <p>
         After this method is called, it is possible to access the client and
         registration interfaces of the naming server remotely.
@@ -81,10 +75,10 @@ public class NamingServer implements Service, Registration
     {
     	serviceSkeleton.start();
     	registrationSkeleton.start();
+    	System.out.println("Started the Naming Server");
     }
 
     /** Stops the naming server.
-
         <p>
         This method commands both the client and registration interface
         skeletons to stop. It attempts to interrupt as many of the threads that
@@ -100,7 +94,6 @@ public class NamingServer implements Service, Registration
     }
 
     /** Indicates that the server has completely shut down.
-
         <p>
         This method should be overridden for error reporting and application
         exit purposes. The default implementation does nothing.
@@ -122,6 +115,51 @@ public class NamingServer implements Service, Registration
             throw new NullPointerException();
         }
         
+        FileNode lockNode = fileTree.getNode(path);     
+        if(lockNode == null)
+        {
+            throw new FileNotFoundException("File to be locked is not found");
+        }
+        
+        // Lock the file
+        lockSynchronised(path, exclusive);
+        
+        if (!exclusive) {
+            // Increment the number of requests
+            lockNode.numRequests++;
+            
+            // Replicate the file if the number of files is large (> REPLICA_THRESHOLD)
+            if (lockNode.numRequests > REPLICA_THRESHOLD) {
+                lockNode.numRequests = 0;
+                ReplicationCheck r = new ReplicationCheck(path);
+                r.start();
+            }
+        } else {
+            // Invalidate all but one copies
+            if (lockNode.numReplicas == 1) {
+                return;
+            } else {
+                // remove all but the first one
+                
+                // Change the number of replicas to reflect the change
+                // NOTE : The Storage and Command lists are not changed so that restoration 
+                // can happen on unlocking
+                lockNode.numReplicas = 1;
+                
+                for (int i = 1; i < lockNode.getStorages().size(); i++) {
+                    try {
+                        lockNode.getCommands().get(i).delete(path);
+                    } catch (RMIException e) {
+                        e.printStackTrace();
+                    }
+                }       
+            }
+        }
+    } 
+    
+    public synchronized void lockSynchronised(Path path, boolean exclusive) throws FileNotFoundException, InterruptedException
+    {
+        ArrayList<FileNode> descendentTree = new ArrayList<FileNode>();     
         FileNode lockNode = fileTree.getNode(path);
         
         if(lockNode == null)
@@ -129,151 +167,6 @@ public class NamingServer implements Service, Registration
             throw new FileNotFoundException("File to be locked is not found");
         }
         
-        lockSynchronised(lockNode, exclusive);
-        
-        if (!exclusive) {
-            lockNode.numRequests++;
-        }
-        
-//        try {
-//            checkForReplication(lockNode, path);
-//        } catch (RMIException e) {
-//            // TODO Auto-generated catch block
-//            e.printStackTrace();
-//        }
-        
-        new ReplicationCheck(path).start();
-        
-    }
-    
-    public class ReplicationCheck extends Thread {
-        
-        Path path;
-        
-        public ReplicationCheck(Path path) {
-            this.path = path;
-        }
-        
-        public void run() {
-//            System.out.println("Running Replication Check thread");
-            FileNode lockNode = fileTree.getNode(path);
-          
-            System.out.println("COUNT IS " + lockNode.numRequests + " Servers is " + lockNode.serverList.size());
-            if (lockNode.numRequests % 20 == 1) {
-                System.out.println("Modulo is 1");
-                if (lockNode.serverList.size() < ((lockNode.numRequests / 20) + 1)) {
-                    System.out.println("Creating replica");
-                    try {
-                        lock(path, false);
-                    } catch (FileNotFoundException e1) {
-                        // TODO Auto-generated catch block
-                        e1.printStackTrace();
-                    } catch (InterruptedException e1) {
-                        // TODO Auto-generated catch block
-                        e1.printStackTrace();
-                    }
-
-                    createNewReplica(path);
-                    try {
-                        unlock(path, false);
-                    } catch (RMIException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-
-                }
-            }
-            
-        }
-        
-        // Creates a new replica
-        private void createNewReplica(Path path) {
-            
-            System.out.println("************ CREATING REPLICA************8");
-            FileNode node = fileTree.getNode(path);
-            // TODO Auto-generated method stub
-            if (registeredStubs.size() <= node.serverList.size()) {
-                System.out.println("All storage servers already have a copy of the file");
-            }
-            
-            // Choose a storage that does not contain the file
-            Storage storage = getSpareStorage(node);
-            System.out.println("Spare storage server is " + storage);
-            Storage existingStorage = node.getStorage();
-            
-            try {
-                serverToClientStubMapping.get(storage).copy(path, existingStorage);
-                System.out.println("Called copy");
-                node.serverList.add(storage);
-            } catch (RMIException | IOException e) {
-                e.printStackTrace();
-            }
-        }
-        
-        private Storage getSpareStorage(FileNode node) {
-            List<Storage> existingServers = node.getServers();
-            for (Storage storage : registeredStubs) {
-                if (!existingServers.contains(storage)) {
-                    return storage;
-                }
-            }
-            
-            return null; // Will never reach here
-        }
-    }
-    
-    private void createNewReplica(Path path) {
-        
-        System.out.println("************ CREATING REPLICA************8");
-        FileNode node = fileTree.getNode(path);
-        // TODO Auto-generated method stub
-        if (registeredStubs.size() <= node.serverList.size()) {
-            System.out.println("All storage servers already have a copy of the file");
-        }
-        
-        // Choose a storage that does not contain the file
-        Storage storage = getSpareStorage(node);
-        System.out.println("Spare storage server is " + storage);
-        Storage existingStorage = node.getStorage();
-        
-        try {
-            serverToClientStubMapping.get(storage).copy(path, existingStorage);
-            System.out.println("Called copy");
-            node.serverList.add(storage);
-        } catch (RMIException | IOException e) {
-            e.printStackTrace();
-        }
-    }
-    
-    private Storage getSpareStorage(FileNode node) {
-        List<Storage> existingServers = node.getServers();
-        for (Storage storage : registeredStubs) {
-            if (!existingServers.contains(storage)) {
-                return storage;
-            }
-        }
-        
-        return null; // Will never reach here
-    }
-    
-    public void checkForReplication(FileNode lockNode, Path path) throws FileNotFoundException, InterruptedException, RMIException {
-        lockNode.numRequests++;
-        System.out.println("COUNT IS " + lockNode.numRequests + " Servers is " + lockNode.serverList.size());
-        if (lockNode.numRequests % 20 == 1) {
-            System.out.println("Modulo is 1");
-            if (lockNode.serverList.size() < ((lockNode.numRequests / 20) + 1)) {
-                System.out.println("Creating replica");
-                createNewReplica(path);
-            }
-        }
-        
-    }
-    
-    public synchronized void lockSynchronised(FileNode lockNode, boolean exclusive) throws FileNotFoundException, InterruptedException
-    {
-        ArrayList<FileNode> descendentTree = new ArrayList<FileNode>();     
-        
-        // All the parents have to be locked too
         while(lockNode != null)
         {
             descendentTree.add(lockNode);
@@ -282,53 +175,104 @@ public class NamingServer implements Service, Registration
         
         for(int i = descendentTree.size()-1; i > 0 ; i--)
         {
-            while(descendentTree.get(i).writeLock || descendentTree.get(i).writeRequests > 0)
+            while(descendentTree.get(i).writeLock || (
+            descendentTree.get(i).threadIdQueue.size() != 0 && java.lang.Thread.currentThread().getId() != descendentTree.get(i).threadIdQueue.get(0).longValue()))
             {
+                if(!descendentTree.get(i).threadIdQueue.contains(java.lang.Thread.currentThread().getId()))
+                {
+                    descendentTree.get(i).threadIdQueue.add(java.lang.Thread.currentThread().getId());
+                }
                 wait();
-            }            
-            descendentTree.get(i).readLockCounter++;
+            }
+            
+            if(descendentTree.get(i).threadIdQueue.size() == 0)
+            {
+                descendentTree.get(i).readLockCounter++;
+            }
+            else if(descendentTree.get(i).threadIdQueue.size() != 0 && java.lang.Thread.currentThread().getId() == descendentTree.get(i).threadIdQueue.get(0).longValue())
+            {
+                descendentTree.get(i).threadIdQueue.remove(0);
+                descendentTree.get(i).readLockCounter++;
+            }
+
+            //so that if there is another read thread right after this in the queue it can get the lock
+            notifyAll(); 
         }
         
         if(descendentTree.size() != 0)
         {
-            while(descendentTree.get(0).writeRequests > 0 || descendentTree.get(0).writeLock)
-            {
-                wait();
-            }
-            
             if(exclusive)
-            {
-                descendentTree.get(0).writeRequests++;
-                while(descendentTree.get(0).readLockCounter > 0 || descendentTree.get(0).writeLock)
+            {   
+                while(descendentTree.get(0).readLockCounter > 0 || descendentTree.get(0).writeLock || (
+                        descendentTree.get(0).threadIdQueue.size()!= 0 
+                        && java.lang.Thread.currentThread().getId() != descendentTree.get(0).threadIdQueue.get(0).longValue()))
                 {
+                    if(!descendentTree.get(0).threadIdQueue.contains(java.lang.Thread.currentThread().getId()))
+                    {
+                        descendentTree.get(0).threadIdQueue.add(java.lang.Thread.currentThread().getId());
+                    }
                     wait();
                 }
-                descendentTree.get(0).writeRequests--;
-                descendentTree.get(0).writeLock = true; 
-//              System.out.println("Write lock on:" + descendentTree.get(0).path.toString() + " by thread : " + java.lang.Thread.currentThread().getId());  
+                if(descendentTree.get(0).threadIdQueue.size() == 0)
+                {
+                    descendentTree.get(0).writeLock = true; 
+                }
+                else if(descendentTree.get(0).threadIdQueue.size()!= 0 
+                        && java.lang.Thread.currentThread().getId() == descendentTree.get(0).threadIdQueue.get(0).longValue())
+                {
+                    descendentTree.get(0).threadIdQueue.remove(0);
+                    descendentTree.get(0).writeLock = true; 
+                }
             }
             else
             {
-                
-                if(descendentTree.get(0).writeRequests > 0 || descendentTree.get(0).writeLock)
+                while(descendentTree.get(0).writeLock ||
+                        (descendentTree.get(0).threadIdQueue.size() != 0 
+                        && java.lang.Thread.currentThread().getId() != descendentTree.get(0).threadIdQueue.get(0).longValue()))
                 {
+                    if(!descendentTree.get(0).threadIdQueue.contains(java.lang.Thread.currentThread().getId()))
+                    {
+                        descendentTree.get(0).threadIdQueue.add(java.lang.Thread.currentThread().getId());
+                    }
                     wait();
                 }
-                descendentTree.get(0).readLockCounter++;
-//              System.out.println(s"Read lock on:" + descendentTree.get(0).path.toString() + " by thread : " + java.lang.Thread.currentThread().getId());          
+
+                if(descendentTree.get(0).threadIdQueue.size() == 0)
+                {
+                    descendentTree.get(0).readLockCounter++;
+                }
+                else if(descendentTree.get(0).threadIdQueue.size() != 0 
+                        && java.lang.Thread.currentThread().getId() == descendentTree.get(0).threadIdQueue.get(0).longValue())
+                {
+                    descendentTree.get(0).threadIdQueue.remove(0);
+                    descendentTree.get(0).readLockCounter++;
+                }
             }
+            notifyAll();
         }
     }
     
-   
+    @Override
+    public void unlock(Path path, boolean exclusive) throws RMIException
+    { 
+        // Restore copies
+        FileNode node = fileTree.getNode(path);
+        
+        if(node == null)
+        {
+            throw new IllegalArgumentException("The file to be unlocked does not exist");
+        }
+        
+        if (node.numReplicas != node.getStorages().size()) {
+            restoreCopies(path);
+        }
+        // Unlocked after restoring so nobody else changes the file while replication 
+        unlockSynchronised(path, exclusive);
+    }
 
     public synchronized void unlockSynchronised(Path path, boolean exclusive)
     {
         FileNode unlockNode = fileTree.getNode(path);
-        if(unlockNode == null)
-        {
-            throw new IllegalArgumentException("The file to be unlocked does not exist");
-        }
         
         boolean mainNodeDone = false;
         while(unlockNode != null)
@@ -337,19 +281,16 @@ public class NamingServer implements Service, Registration
             {
                 if(exclusive)
                 {
-//                  System.out.println("Write unlock on: " + unlockNode.path.toString() + " by thread : " + java.lang.Thread.currentThread().getId());
                     unlockNode.writeLock = false;               
                 }
                 else
                 {
-//                  System.out.println("Read unlock on: " + unlockNode.path.toString() + " by thread : " + java.lang.Thread.currentThread().getId());
                     unlockNode.readLockCounter--;
                 }
                 mainNodeDone = true;
             }
             else
             {
-//              System.out.println("Read unlock on:" + unlockNode.path.toString() + " by thread : " + java.lang.Thread.currentThread().getId());
                 unlockNode.readLockCounter--;
             }
             notifyAll();
@@ -357,11 +298,20 @@ public class NamingServer implements Service, Registration
         }
     }
     
-    @Override
-    public void unlock(Path path, boolean exclusive) throws RMIException
-    {
-        unlockSynchronised(path, exclusive);
-        
+    private void restoreCopies(Path path) {
+        FileNode node = fileTree.getNode(path);
+        for (int i = 1; i < node.numReplicas; i++) {
+            try {
+                node.getCommands().get(i).copy(path, node.getStorages().get(0));
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (RMIException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        node.numReplicas = node.getStorages().size();
     }
 
     @Override
@@ -391,7 +341,6 @@ public class NamingServer implements Service, Registration
         {
             throw new FileNotFoundException("Path is not a valid directory");
         }
-        System.out.println("Read lock acquired in list method by thread : " + java.lang.Thread.currentThread().getId());
         lock(directory, false);
         String[] children = node.listChildren();
         unlock(directory, false);
@@ -415,7 +364,6 @@ public class NamingServer implements Service, Registration
     @Override
     public boolean createFile(Path file) throws RMIException, FileNotFoundException, InterruptedException
     {
-//      fileTree.printDirectories();
         if(file == null)
         {
             throw new NullPointerException("CreateFile does not take null as file argument");
@@ -433,7 +381,6 @@ public class NamingServer implements Service, Registration
             throw new FileNotFoundException("Parent directory does not exist or is a file");
         }
         
-        System.out.println("Write lock acquired in createFile by thread : " + java.lang.Thread.currentThread().getId());
         lock(file.parent(), true);
         if(fileTree.getNode(file) != null)
         {
@@ -444,7 +391,7 @@ public class NamingServer implements Service, Registration
         Storage serverStub = null;
         Command commandStub = null;
         FileNode node = fileTree.getNode(file.parent());
-        List<Storage> storageServers = node.getServers();
+        List<Storage> storageServers = node.getStorages();
         
         if(file.parent().isRoot() || storageServers == null)
         {
@@ -455,37 +402,27 @@ public class NamingServer implements Service, Registration
         }
         else
         {
-            int i = 0;
-            for(Storage storageServer: storageServers)
-            {
-                commandStub = node.getCommands().get(i);
-                fileTree.addNode(file, storageServer, commandStub, false);
-                commandStub.create(file);
-                i++;
-            }
+            fileTree.addNode(file, node.getStorages().get(0), node.getCommands().get(0), false);
+            node.getCommands().get(0).create(file);
         }
         
-        
         unlock(file.parent(), true);
-        
         return true;
     }
     
     /** Creates the given directory, if it does not exist.
 
-    @param directory Path at which the directory is to be created.
-    @return <code>true</code> if the directory is created successfully,
-            <code>false</code> otherwise. The directory is not created if
-            a file or directory with the given name already exists.
-    @throws FileNotFoundException If the parent directory does not exist.
-    @throws RMIException If the call cannot be completed due to a network
-                         error.
- */
-    
+        @param directory Path at which the directory is to be created.
+        @return <code>true</code> if the directory is created successfully,
+                <code>false</code> otherwise. The directory is not created if
+                a file or directory with the given name already exists.
+        @throws FileNotFoundException If the parent directory does not exist.
+        @throws RMIException If the call cannot be completed due to a network
+                             error.
+     */
     @Override
     public boolean createDirectory(Path directory) throws RMIException, FileNotFoundException, InterruptedException
     {
-//      Check about this
         if(serverToClientStubMapping.size() == 0)
         {
             throw new IllegalStateException("No servers registered");
@@ -505,46 +442,35 @@ public class NamingServer implements Service, Registration
             throw new FileNotFoundException("Parent directory does not exist or is a file");
         }
         
-
-        System.out.println("Write lock acquired in createDirectory by thread : " + java.lang.Thread.currentThread().getId());
         lock(directory.parent(), true);
-        if(fileTree.getNode(directory) != null)
-        {
+        
+        if (fileTree.getNode(directory) != null) {
             unlock(directory.parent(), true);
             return false;
-        }
-        else
-        {
+        } else {
+            
             Storage serverStub = null;
             Command commandStub = null;
-            FileNode node = fileTree.getNode(directory.parent());
-            List<Storage> storageServers = node.getServers();
-            
+            FileNode parent = fileTree.getNode(directory.parent());
+            List<Storage> storageServers = parent.getStorages();
+          
             if(directory.parent().isRoot() || storageServers == null)
             {
                 serverStub = registeredStubs.get(0);
                 commandStub = serverToClientStubMapping.get(serverStub);
                 fileTree.addNode(directory, serverStub, commandStub, true);
-            }
-            else
-            {
-                int i = 0;
-                for(Storage storageServer: storageServers)
-                {
-                    commandStub = node.getCommands().get(i);
-                    fileTree.addNode(directory, storageServer, commandStub, true);
-//                  commandStub.create(directory);
-                    i++;
-                }
-            }
-            unlock(directory.parent(), true);
-            return true;
-        }       
+            } else {
+                fileTree.addNode(directory, storageServers.get(0), serverToClientStubMapping.get(storageServers.get(0)), true);
+            }     
+        }
+        unlock(directory.parent(), true);
+        return true;
     }
 
     @Override
     public boolean delete(Path path) throws FileNotFoundException, RMIException, InterruptedException
     {       
+        
         if(path.isRoot())
         {
             return false;
@@ -556,14 +482,12 @@ public class NamingServer implements Service, Registration
         }
         else
         {
-            System.out.println("Write lock acquired in delete by thread : " + java.lang.Thread.currentThread().getId());
             lock(path.parent(), true);
             fileTree.deleteNode(path);
             unlock(path.parent(), true);
         }
-        return false;
+        return true;
     }
-
 
     @Override
     public Storage getStorage(Path file) throws FileNotFoundException
@@ -586,11 +510,10 @@ public class NamingServer implements Service, Registration
     public Path[] register(Storage client_stub, Command command_stub,
                            Path[] files)
     {
-
         /*
-        Registration requries the naming server to lock the root directory for
+        Registration requires the naming server to lock the root directory for
         exclusive access. Therefore, it is best done when there is not heavy
-        usage of the filesystem.
+        usage of the file system.
 
         @param client_stub Storage server client service stub. This will be
                            given to clients when operations need to be performed
@@ -630,13 +553,66 @@ public class NamingServer implements Service, Registration
                 fileTree.addNode(file, client_stub, command_stub, false);
             }
         }
-//        System.out.println("client stub:" + client_stub);
-//        System.out.println("Server stub:" + command_stub);
+        
         registeredStubs.add(client_stub);
         serverToClientStubMapping.put(client_stub, command_stub);
-//        System.out.println("Registering!");
-//        fileTree.printDirectories();
         return filesToBeDeleted.toArray(new Path[filesToBeDeleted.size()]);
+    }
 
+    // A thread of this class is spawned if a file has to be replicated
+    public class ReplicationCheck extends Thread {
+        Path path;
+        
+        public ReplicationCheck(Path path) {
+            this.path = path;
+        }
+        
+        public void run() {
+            try {
+                lock(path, false);
+            } catch (FileNotFoundException | InterruptedException e1) {
+                e1.printStackTrace();
+            }
+                
+            createNewReplica(path);
+                
+            try {
+                unlock(path, false);
+            } catch (RMIException e) {
+                e.printStackTrace();
+            }
+        }
+        
+        // Creates a new replica
+        private void createNewReplica(Path path) {            
+            FileNode node = fileTree.getNode(path);
+            if (registeredStubs.size() <= node.getStorages().size()) {
+                System.out.println("Failed to create Replica because all servers already have a copy");
+                return;
+            } else {
+                // Choose a storage that does not contain the file
+                Storage storage = getSpareStorage(node);
+                Storage existingStorage = node.getStorage();
+                Command command = serverToClientStubMapping.get(storage);
+                
+                try {
+                    command.copy(path, existingStorage);
+                    node.addServers(storage, command);
+                    node.numReplicas++;
+                } catch (RMIException | IOException e) {
+                    e.printStackTrace();
+                }
+            }   
+        }
+        
+        private Storage getSpareStorage(FileNode node) {
+            List<Storage> existingServers = node.getStorages();
+            for (Storage storage : registeredStubs) {
+                if (!existingServers.contains(storage)) {
+                    return storage;
+                }
+            }
+            return null; // Will never reach here
+        }
     }
 }

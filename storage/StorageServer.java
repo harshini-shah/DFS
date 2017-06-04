@@ -1,15 +1,19 @@
 package storage;
 
-import java.io.*;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.net.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.nio.channels.FileChannel;
+import java.util.Iterator;
 
-import common.*;
-import rmi.*;
-import naming.*;
+import common.Path;
+import naming.Registration;
+import rmi.RMIException;
+import rmi.Stub;
 
 /** Storage server.
 
@@ -23,30 +27,9 @@ public class StorageServer implements Storage, Command
 	private final File root; //root filesystem for this Storage server
 	private CommandSkeleton<Command> commandSkeleton;
 	private StorageSkeleton<Storage> storageSkeleton;
-	Throwable stoppedCause;
+	private Throwable stoppedCause;
 	private static final int CHUNK_SIZE = 1000000; // Chunk size when files are copied
 	
-	public void setStoppedCause(Throwable stoppedCause)
-	{
-		this.stoppedCause = stoppedCause;
-	}
-	
-	public Throwable getStoppedCause() 
-	{
-        return this.stoppedCause;
-	}
-	
-	public void removeEmptyDirectories(File dir)
-	{
-		if(!dir.isDirectory())
-			return;
-		
-		for(File subDir: dir.listFiles())
-			removeEmptyDirectories(subDir);
-		if(!dir.equals(root) && dir.listFiles().length == 0 )
-			dir.delete();
-	}
-
 	/** Creates a storage server, given a directory on the local filesystem, and
         ports to use for the client and command interfaces.
     
@@ -72,15 +55,14 @@ public class StorageServer implements Storage, Command
         storageSkeleton = new StorageSkeleton<Storage>(Storage.class, this, new InetSocketAddress(client_port));
         commandSkeleton = new CommandSkeleton<Command>(Command.class, this, new InetSocketAddress(command_port));
     }
-    
 
     /** Creates a storage server, given a directory on the local filesystem.
-
+    
         <p>
         This constructor is equivalent to
         <code>StorageServer(root, 0, 0)</code>. The system picks the ports on
         which the interfaces are made available.
-
+    
         @param root Directory on the local filesystem. The contents of this
                     directory will be accessible through the storage server.
         @throws NullPointerException If <code>root</code> is <code>null</code>.
@@ -98,7 +80,7 @@ public class StorageServer implements Storage, Command
 
     /** Starts the storage server and registers it with the given naming
         server.
-
+    
         @param hostname The externally-routable hostname of the local host on
                         which the storage server is running. This is used to
                         ensure that the stub which is provided to the naming
@@ -124,34 +106,39 @@ public class StorageServer implements Storage, Command
     	
     	//Returns relative paths of all files in root
     	Path currentFiles[] = Path.list(root);
-    	//register() returns redundant files
-    	Path[] redundant = naming_server.register(Stub.create(Storage.class, storageSkeleton, hostname),
+    	
+    	//register returns redundant files
+    	Path[] redundantFiles = naming_server.register(Stub.create(Storage.class, storageSkeleton, hostname),
     											Stub.create(Command.class, commandSkeleton, hostname), currentFiles);
-    	for(Path path: redundant)
-    		delete(path);
-    	//Trim all empty directories
+    	for(Path path: redundantFiles) {
+    	    delete(path);
+    	}
+    	
     	removeEmptyDirectories(root);
     }
 
     /** Stops the storage server.
-
+    
         <p>
         The server should not be restarted.
      */
     public void stop()
     {
     	//Stop both services
-        if(!commandSkeleton.stopped)
-        	commandSkeleton.stop();
-        if(!storageSkeleton.stopped)
-        	storageSkeleton.stop();
+        if (!commandSkeleton.stopped) {
+            commandSkeleton.stop();
+        }
+        
+        if (!storageSkeleton.stopped) {
+            storageSkeleton.stop();
+        }
         
         //Call stopped() when shutting down
-        stopped(getStoppedCause());
+        stopped(null);
     }
 
     /** Called when the storage server has shut down.
-
+    
         @param cause The cause for the shutdown, if any, or <code>null</code> if
                      the server was shut down by the user's request.
      */
@@ -164,14 +151,36 @@ public class StorageServer implements Storage, Command
         }
     }
 
-    // The following methods are documented in Storage.java.
+    public void setStoppedCause(Throwable stoppedCause)
+	{
+		this.stoppedCause = stoppedCause;
+	}
+	
+	public void removeEmptyDirectories(File dir)
+	{
+	    // Return if the file is a directory
+		if(!dir.isDirectory()) {
+		    return;
+		}
+		
+		for(File subDir: dir.listFiles()) {
+	          removeEmptyDirectories(subDir);
+		}
+		
+		if (!dir.equals(root) && dir.listFiles().length == 0) {
+		    dir.delete();
+		}
+	}
+
+	// The following methods are documented in Storage.java.
     @Override
     public synchronized long size(Path file) throws FileNotFoundException
     {
-        File f = file.toFile(root);  //why root?
+        File f = file.toFile(root);
         
-        if(!f.isFile())
-        	throw new FileNotFoundException("File does not exist or is not a normal file");
+        if(!f.isFile()) {
+            throw new FileNotFoundException("File does not exist or is not a normal file");
+        }
         
         return f.length();
     }
@@ -181,16 +190,19 @@ public class StorageServer implements Storage, Command
         throws FileNotFoundException, IOException, IndexOutOfBoundsException
     {
     	File f = file.toFile(root);
+            	
+        if (!f.exists() || !f.isFile()) {
+            throw new FileNotFoundException("File does not exist or is not a normal file");
+        }
         
-        if(!f.isFile())
-        	throw new FileNotFoundException("File does not exist or is not a normal file");
-        if(offset + length > f.length() || offset < 0 || length < 0)
-        	throw new IndexOutOfBoundsException("The offset and length do not conform to the file size");
+        if(offset + length > f.length() || offset < 0 || length < 0) {
+            throw new IndexOutOfBoundsException("The offset and length do not conform to the file size");            
+        }
         
         FileInputStream fis = new FileInputStream(f);
         byte[] byteStream = new byte[length];
         fis.skip(offset);
-        fis.read(byteStream);   // will throw IOException
+        fis.read(byteStream);
         
         if (fis != null) {
             fis.close();
@@ -227,26 +239,31 @@ public class StorageServer implements Storage, Command
     {
         File f = file.toFile(root);
         
-        //Path can't be root itself
-        if(f.equals(root))
-        	return false;
+        //Path can't be root itself or already exists
+        if(f.equals(root) || f.exists()) {
+            return false;
+        }
         
-        //Returns new PathIterator(impl. iterator) from Path.java
+        //Returns new PathIterator to ensure all the parent folders exist
         Iterator<String> iter = file.iterator();
         File path = root;
         
         while (iter.hasNext()) {
-            File subDirectory = new File(path, iter.next());    // creates subdirectory 
+            File subDirectory = new File(path, iter.next());
             if (iter.hasNext()) {
+                // The current subDirectory is one of the parents
                 if (!subDirectory.exists()) {
+                    // create required subdirectory
                     if (subDirectory.mkdir()) {
                         path = subDirectory;
                     } else {
                         return false;
                     }
                 } else if (!subDirectory.isDirectory()) {
+                    // One of the subdirectories specified is a file - error
                     return false;
                 } else {
+                    // Subdirectory already exists
                     path = subDirectory;
                 }
             } else {
@@ -259,11 +276,9 @@ public class StorageServer implements Storage, Command
             }
         }
         
-        //If all fails
 		throw new Error("Create() failed"); 
     }
-    
-    
+      
     public boolean deleteRecursive(File file)
     {
     	for(File child: file.listFiles())
@@ -286,25 +301,28 @@ public class StorageServer implements Storage, Command
     public synchronized boolean delete(Path path)
     {
         File f = path.toFile(root);
-        if(f.equals(root))
-        	return false;
-        boolean isDeleted;
         
-        if(!f.isDirectory())
-        	isDeleted = f.delete();
-        else
-        	isDeleted = deleteRecursive(f);
+        if(f.equals(root) || !f.exists()) {
+            return false;
+        }
+        
+        boolean isDeleted = false;
+        
+        if(!f.isDirectory()) {
+            isDeleted = f.delete();
+        } else {
+            isDeleted = deleteRecursive(f);
+        }
         
         //Delete empty parent directories
-        if(isDeleted)
-        {
-        	File parent = f.getParentFile();
-        	while(parent.isDirectory() && (parent.listFiles().length == 0) && !parent.equals(root))
-        	{
-        		parent.delete();
-        		parent = parent.getParentFile();
-        	}
+        if(isDeleted) {
+            File parent = f.getParentFile();
+            while (parent.isDirectory() && parent.listFiles().length == 0 && !parent.equals(root)) {
+                parent.delete();
+                parent = parent.getParentFile();
+            }
         }
+
         return isDeleted;
     }
 
@@ -322,8 +340,6 @@ public class StorageServer implements Storage, Command
             throw new NullPointerException("Path of file to be copied cannot be null");
         }
      
-        
-        
         // Copy the file in chunks of 1 MB        
         long size = server.size(file);
         long offset = 0;
