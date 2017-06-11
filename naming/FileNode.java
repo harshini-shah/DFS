@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 
 import common.Path;
 import storage.Command;
@@ -30,12 +31,15 @@ public class FileNode
     boolean writeLock;
     int writeRequests;
     List<Long> threadIdQueue;
+    
+    private int storageNum;
 
     int numRequests;
     int numReplicas;
    
     FileNode(Storage client_stub, Command command_stub, boolean isFile, Path path, String pathComponent)
     {
+//    	System.out.println("Adding node with stubs:" + command_stub + " and " + client_stub);
         this.path = path;
         this.pathComponent = pathComponent;
         storageList = new ArrayList<Storage>();
@@ -52,6 +56,8 @@ public class FileNode
         this.writeRequests = 0;
         this.writeLock = false;
         this.parent = null;
+        
+        this.storageNum = 0;
     	   
         this.isFile = isFile;
         
@@ -183,7 +189,12 @@ public class FileNode
        // lists are valid ones
 	   if(!storageList.isEmpty())
 	   {
-		   return storageList.get(0);
+		   int max = storageList.size() - 1;
+		   int min = 0;
+		   int randomNum = ThreadLocalRandom.current().nextInt(min, max + 1);
+//       	   System.out.println("Min : " + min + " Max : " + max + " chosen :" + randomNum);
+//		   int randomNum = storageNum++ % storageList.size();
+		   return storageList.get(randomNum);
 	   }
 	   return null;
    }
