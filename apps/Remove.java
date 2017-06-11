@@ -88,6 +88,7 @@ public class Remove extends ClientApplication
         // Delete the object in question.
         try
         {
+        	System.out.println("Deleting file: " + remote_path);
             if(!naming_server.delete(object.path))
                 throw new ApplicationFailure(object + " could not be deleted");
         }

@@ -42,6 +42,7 @@ public class Launcher
         applications.put("parse", new Parse());
         applications.put("pwd", new PrintWorkingDirectory());
         applications.put("cd", new ChangeDirectoryDummy());
+        applications.put("queueTest", new QueueTest());
 
 
         // Check that at least an application name is present. If not, print a

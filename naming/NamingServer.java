@@ -42,7 +42,7 @@ public class NamingServer implements Service, Registration
     Skeleton<Service> serviceSkeleton;    
     Skeleton<Registration> registrationSkeleton;
     
-    private static final int REPLICA_THRESHOLD = 2;
+    private static final int REPLICA_THRESHOLD = 20;
     
          
     /** Creates the naming server object.
@@ -516,8 +516,10 @@ public class NamingServer implements Service, Registration
             	int max = storageServers.size() - 1;
             	int min = 0;
             	randomNum = ThreadLocalRandom.current().nextInt(min, max + 1);
+            	serverStub = storageServers.get(randomNum);
+            	commandStub = serverToClientStubMapping.get(storageServers.get(randomNum));
 //            	System.out.println("Min : " + min + " Max : " + max + " chosen :" + randomNum);
-                fileTree.addNode(directory, storageServers.get(randomNum), serverToClientStubMapping.get(storageServers.get(randomNum)), true);
+                fileTree.addNode(directory, serverStub, commandStub, true);
             }    
             System.out.println("Created a virtual directory on storage server: " + serverStub.toString());
         }

@@ -35,6 +35,7 @@ public class Touch extends ClientApplication
         {
             try
             {
+            	System.out.println("Creating a file: "+ remote_file);
                 touch(remote_file);
                 report();
             }

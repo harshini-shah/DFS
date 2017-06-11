@@ -35,6 +35,7 @@ public class MakeDirectory extends ClientApplication
         {
             try
             {
+            	System.out.println("Making a directory: " + remote_directory);
                 make(remote_directory);
                 report();
             }
